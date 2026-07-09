@@ -14,6 +14,7 @@ smoothly.
 - Render math in plain text / code blocks, NOT LaTeX (`$$...$$` doesn't render in my terminal).
 - Prefer logical derivations over asserted facts — when I don't get something, prove it from first
   principles.
+- Don't make any assumptions — always ask for clarification.
 
 ## The competition in one paragraph
 
