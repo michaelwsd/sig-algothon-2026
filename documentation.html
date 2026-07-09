@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algothon 2026 — Research, Strategy &amp; Validation</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+                     options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] } };
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1c232d; --ink:#e6edf3; --muted:#9aa7b4;
+    --line:#2a3441; --accent:#4aa8ff; --good:#3fb950; --bad:#f85149; --warn:#d29922;
+    --code:#0b0e12;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.68 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{display:grid;grid-template-columns:280px 1fr;max-width:1280px;margin:0 auto}
+  nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;
+    padding:26px 16px;border-right:1px solid var(--line);background:var(--panel)}
+  nav h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:16px 0 8px}
+  nav h2:first-child{margin-top:0}
+  nav ul{list-style:none;padding:0;margin:0}
+  nav ul li a{display:block;padding:5px 10px;border-radius:6px;color:var(--muted);font-size:13.5px}
+  nav ul li a:hover{background:var(--panel2);color:var(--ink);text-decoration:none}
+  main{padding:44px 52px;min-width:0}
+  header.title{border-bottom:1px solid var(--line);padding-bottom:20px}
+  header.title h1{font-size:30px;margin:0 0 6px;letter-spacing:-.015em}
+  header.title p{color:var(--muted);margin:2px 0}
+  section{padding:32px 0;border-bottom:1px solid var(--line)}
+  section h2{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+  .step{color:var(--accent);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
+  h3{font-size:17px;margin:24px 0 6px}
+  h4{font-size:15px;margin:18px 0 4px;color:var(--muted)}
+  p{margin:10px 0}
+  code{background:var(--code);padding:2px 6px;border-radius:4px;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13.5px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:13px 15px;overflow:auto;
+    font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.8px;line-height:1.55;color:#cdd9e5}
+  pre .c{color:#6a7a8c}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .callout{border-left:3px solid var(--accent);background:var(--panel);border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0}
+  .finding{border-color:var(--good)} .finding .lbl{color:var(--good)}
+  .caveat{border-color:var(--warn)}  .caveat .lbl{color:var(--warn)}
+  .danger{border-color:var(--bad)}   .danger .lbl{color:var(--bad)}
+  .lbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.6px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+  th{background:var(--panel2);color:var(--muted);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.best td{background:rgba(63,185,80,.09)}
+  .pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .pill.g{background:rgba(63,185,80,.15);color:var(--good)}
+  .pill.r{background:rgba(248,81,73,.15);color:var(--bad)}
+  .pill.w{background:rgba(210,153,34,.15);color:var(--warn)}
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .kpi .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px}
+  .kpi .box .v{font-size:23px;font-weight:700;letter-spacing:-.02em}
+  .kpi .box .k{color:var(--muted);font-size:12px;margin-top:2px}
+  .muted{color:var(--muted)}
+  .eq{background:var(--panel);border:1px dashed var(--line);border-radius:8px;padding:8px 14px;margin:12px 0;overflow-x:auto}
+  footer{padding:26px 52px 60px;color:var(--muted);font-size:13px;max-width:1280px;margin:0 auto}
+  @media(max-width:960px){.wrap{grid-template-columns:1fr}nav{display:none}main{padding:26px 18px}
+    .kpi{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <h2>Start here</h2>
+  <ul>
+    <li><a href="#summary">Executive summary</a></li>
+    <li><a href="#rules">The game and the scorer</a></li>
+    <li><a href="#principle">The governing principle</a></li>
+  </ul>
+  <h2>Part I · Analysis</h2>
+  <ul>
+    <li><a href="#a-data">1 · Data integrity</a></li>
+    <li><a href="#a-returns">2 · Prices to log returns</a></li>
+    <li><a href="#a-dist">3 · Distribution shape</a></li>
+    <li><a href="#a-vol">4 · Volatility</a></li>
+    <li><a href="#a-market">5 · The market factor</a></li>
+    <li><a href="#a-factors">6 · How many factors</a></li>
+    <li><a href="#a-beta">7 · Beta and residuals</a></li>
+  </ul>
+  <h2>Part II · Signal hunt</h2>
+  <ul>
+    <li><a href="#s-dead">8 · What is dead</a></li>
+    <li><a href="#s-leadlag">9 · Lead-lag</a></li>
+    <li><a href="#s-breadth">10 · Why weak signals pay</a></li>
+    <li><a href="#s-reversal">11 · Reversal</a></li>
+  </ul>
+  <h2>Part III · Strategy</h2>
+  <ul>
+    <li><a href="#b-backtester">12 · The backtester</a></li>
+    <li><a href="#b-protocol">13 · Anti-overfit protocol</a></li>
+    <li><a href="#b-design">14 · Strategy design</a></li>
+    <li><a href="#b-search">15 · Variant search</a></li>
+    <li><a href="#b-results">16 · Validation results</a></li>
+  </ul>
+  <h2>Reference</h2>
+  <ul>
+    <li><a href="#files">Every file explained</a></li>
+    <li><a href="#caveats">Caveats &amp; next steps</a></li>
+  </ul>
+</nav>
+
+<main>
+<header class="title">
+  <h1>Algothon 2026 — Research, Strategy &amp; Validation</h1>
+  <p>From raw prices to a validated, market-neutral lead-lag strategy.</p>
+  <p class="muted">Susquehanna &times; UNSW FinTech Society · test dataset: 500 days &times; 51 instruments</p>
+</header>
+
+<!-- ================================================== SUMMARY -->
+<section id="summary">
+  <div class="step">Executive summary</div>
+  <h2>What we built, and how much of it you should believe</h2>
+
+  <div class="kpi">
+    <div class="box"><div class="v">345.6</div><div class="k">official <code>eval.py</code> score</div></div>
+    <div class="box"><div class="v">4.97</div><div class="k">annualised Sharpe</div></div>
+    <div class="box"><div class="v">353.9</div><div class="k">mean score on untouched holdout</div></div>
+    <div class="box"><div class="v">242.8</div><div class="k">frozen model, never refit</div></div>
+  </div>
+
+  <p>The analysis established that this market is a plain, constant-parameter Gaussian simulator with one market
+  factor, two sector factors, and <strong>exactly one exploitable signal</strong>: cross-instrument lead-lag, where
+  instrument <em>i</em>'s move today carries information about instrument <em>j</em>'s move tomorrow. Momentum,
+  trend, drift, own-reversal, volatility clustering and any nonlinear structure were each tested and found absent.</p>
+
+  <p>The strategy therefore does one thing and does it at scale: every day it rebuilds the lead-lag matrix on
+  market-neutral residuals, drops entries within one standard error as noise, aggregates the surviving structure
+  into a prediction for every instrument, sizes positions inversely to volatility, neutralises net market exposure
+  with ALGO, and deploys capital up to the position limits.</p>
+
+  <div class="callout finding">
+    <span class="lbl">The number to trust</span>
+    Parameters were chosen using <em>only</em> windows scored on days 125–350. On the holdout window (days
+    350–500), which was never used for any decision, the strategy scores a mean of <strong>353.9</strong>, a
+    minimum of 277.7, and is positive on every window. A model frozen on days 1–250 and traded blind on 251–500,
+    never refit, still scores <strong>242.8 at Sharpe 3.64</strong>. That last figure is the most conservative
+    honest estimate of how the strategy travels to data it has never seen.
+  </div>
+
+  <div class="callout danger">
+    <span class="lbl">The check that matters most</span>
+    A <strong>placebo</strong> using the identical machinery but a <em>random</em> matrix of matched scale
+    <strong>loses $119 per day</strong>. If there were a look-ahead bug, the placebo would profit too. It does not.
+    The edge is the real lead-lag structure, not a leak.
+  </div>
+</section>
+
+<!-- ================================================== RULES -->
+<section id="rules">
+  <div class="step">The game</div>
+  <h2>What <code>eval.py</code> actually rewards</h2>
+
+  <p>We implement <code>getMyPosition(prcSoFar)</code>. Each day it receives price history shaped
+  <code>(51 instruments, days-so-far)</code> and returns 51 integer share positions. The scorer replays the last
+  250 days, hands us only the past, clips our positions to the dollar limit <em>at that day's price</em>, charges
+  commission on shares traded, and records daily profit and loss. The score is:</p>
+
+  <div class="eq">
+  $$\mathrm{sr} = \frac{\sqrt{250}\,\mu}{\sigma}, \qquad \mathrm{frac} = \frac{\mathrm{sr}^2}{\mathrm{sr}^2 + 1},
+  \qquad \text{score} = \begin{cases} \mu \cdot \mathrm{frac} & \mu > 0\\[2pt] \mu & \mu \le 0\end{cases}$$
+  </div>
+
+  <p>Read it as <em>dollar profit, taxed by unreliability</em>. You keep 50% of profit at Sharpe 1, 80% at Sharpe 2,
+  90% at Sharpe 3, and the curve then flattens. Two consequences drive every design decision that follows.</p>
+
+  <div class="grid">
+    <div class="callout"><span class="lbl">Asymmetry</span>
+      A profitable strategy can never score negative; volatility only shrinks the score toward zero. But a losing
+      strategy scores its <em>full</em> loss with no discount. Hence: <strong>signal quality first, size second.</strong>
+    </div>
+    <div class="callout"><span class="lbl">Size is nearly free once Sharpe is high</span>
+      Doubling every position doubles $\mu$ and doubles $\sigma$, so $\mathrm{sr}$ and $\mathrm{frac}$ are unchanged
+      and the score simply <em>doubles</em>. Score is linear in size until the caps bind. So: reach a high Sharpe,
+      then <strong>deploy capital to the limits.</strong>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Rule</th><th>Value</th><th>Why it matters here</th></tr>
+    <tr><td>Position limit</td><td>$10,000 per instrument, re-clipped daily at that day's price</td><td>Size to ~95% of cap so a rising price cannot force an involuntary, commission-charged trim.</td></tr>
+    <tr><td>Instrument 0 ("ALGO")</td><td>$100,000 cap (10&times;), 0.2bp commission (5&times; cheaper)</td><td>Not decoration. This is the designed hedging vehicle.</td></tr>
+    <tr><td>Commission</td><td>1bp of dollars traded</td><td>Cheap. Turnover is <em>not</em> the binding constraint (see the smoothing experiment).</td></tr>
+    <tr><td>Minimum volume</td><td>$25,000 total over 250 days</td><td>Kills do-nothing strategies. We trade $111.9M, so this never binds.</td></tr>
+    <tr><td>Runtime / packages</td><td>10 minutes, no network; numpy, pandas, scipy, sklearn, statsmodels allowed</td><td>Our 250 calls take 0.05s. We use only numpy.</td></tr>
+  </table>
+
+  <h4>Where the $\sqrt{250}$ comes from</h4>
+  <p>Variance of a sum of independent days adds, so a year's variance is $250\times$ a day's and its standard
+  deviation is $\sqrt{250}\times$ a day's. But the mean grows by the full $250$. So
+  $\mathrm{SR}_{\text{year}} = \sqrt{250}\,\mathrm{SR}_{\text{day}}$. <strong>Mean grows linearly, risk only as a
+  square root.</strong> That gap is why a tiny daily edge, repeated, becomes a large annual Sharpe. It is the
+  entire economic basis of this strategy.</p>
+</section>
+
+<!-- ================================================== PRINCIPLE -->
+<section id="principle">
+  <div class="step">Method</div>
+  <h2>The one principle everything hangs on</h2>
+
+  <p>We are scored on a <strong>hidden window of days we have never seen</strong>. A number measured on our 500 days
+  is worthless unless it reflects a <em>stable property of the generator</em> rather than a fluke of this sample.</p>
+
+  <p>We cannot see the future, so we simulate the situation. Split the data in half. Treat the first half as "data we
+  have" and the second as "the unseen future". Estimate the same quantity separately on each half, then correlate the
+  two sets of per-instrument values <strong>across instruments</strong>:</p>
+
+  <div class="eq">$$\text{stability}(\theta) = \operatorname{corr}_{i=1..N}\!\left(\theta_i^{(1)},\, \theta_i^{(2)}\right)$$</div>
+
+  <p>Near $1$ means the instrument that scored high early scores high late: a real, persistent fingerprint we may
+  build on. Near $0$ means the first half tells you nothing about the second: sample noise, to be discarded however
+  good it looks in a backtest. This is the <strong>stability audit</strong>, and it is the single filter that decides
+  what enters the strategy.</p>
+
+  <div class="callout finding">
+    <span class="lbl">The three numbers that are the whole strategy</span>
+    Volatility stability <strong>0.982</strong> (trust it, size on it) · Beta stability <strong>0.780</strong>
+    (usable, but noisy — shrink it) · Drift stability <strong>&minus;0.034</strong> (momentum is dead, never bet on it).
+  </div>
+</section>
+
+<!-- ================================================== PART I -->
+<section id="a-data">
+  <div class="step">Part I · 1</div>
+  <h2>Data integrity, checked rather than assumed</h2>
+  <p>Before trusting any statistic, confirm the file is what we think it is. A misparsed column or a hidden
+  <code>NaN</code> would flow through every number below and never announce itself. The notebook asserts: no NaNs,
+  all prices positive, ALGO in column zero, 51 instruments, no duplicate rows. An <code>assert</code> halts the
+  notebook rather than printing a plausible wrong answer.</p>
+  <p>First clue of the entire project: <strong>ALGO starts at exactly 100.00</strong>. Real assets do not start at
+  round numbers. Constructed indices do.</p>
+  <div class="callout caveat"><span class="lbl">Orientation trap</span>
+    The DataFrame is days-by-instruments ($500\times51$). The competition hands <code>getMyPosition</code> the
+    <em>transpose</em>, instruments-by-days. Same data, sideways. Confusing them yields code that runs happily and
+    computes nonsense.
+  </div>
+</section>
+
+<section id="a-returns">
+  <div class="step">Part I · 2</div>
+  <h2>Prices are the wrong unit; log returns are the right one</h2>
+  <p>A "+1" move is $+0.9\%$ on a 116 stock and $+6.7\%$ on a 15 stock. Price levels are not comparable, so they
+  cannot be averaged or correlated. Returns fix that. We use <em>log</em> returns for two reasons.</p>
+
+  <div class="grid">
+    <div class="callout"><span class="lbl">They add across time</span>
+      $100\to110\to121$ is two $+10\%$ days. Simple returns give $0.10+0.10=0.20$, but the true move is $0.21$;
+      you must compound. Log returns give $\ln(1.1)+\ln(1.1)=\ln(1.21)$ <em>exactly</em>, because
+      $\ln\frac{P_1}{P_0}+\ln\frac{P_2}{P_1}=\ln\frac{P_2}{P_0}$. Every statistical tool we use is built for sums.
+    </div>
+    <div class="callout"><span class="lbl">They are symmetric</span>
+      $+10\%$ then $-10\%$ simple leaves you at 99. In log space $+x$ then $-x$ is exactly zero, since
+      $\ln(P/Q)=-\ln(Q/P)$. Needed before assuming a symmetric distribution.
+    </div>
+  </div>
+  <p>We lose nothing: $\ln(1.01)=0.00995$ against $r=0.01$. The notebook verifies the transform is lossless by
+  asserting $P_0\,e^{\sum_t g_t} = P_T$.</p>
+</section>
+
+<section id="a-dist">
+  <div class="step">Part I · 3</div>
+  <h2>The distribution question rules whole toolkits in or out</h2>
+
+  <p>A Gaussian is fully described by mean and variance, and for jointly Gaussian variables <strong>all</strong>
+  dependence is linear, captured entirely by correlation. So if returns are Gaussian, linear tools capture
+  everything there is, and machine learning &mdash; whose job is finding <em>nonlinear</em> structure &mdash; has
+  nothing to find. It would memorise flukes in 499 observations and fail on the unseen days.</p>
+
+  <h4>Kurtosis: the fat-tail meter</h4>
+  <div class="eq">$$\operatorname{kurt}(x)=\mathbb{E}\!\left[\left(\tfrac{x-\mu}{\sigma}\right)^{4}\right]$$</div>
+  <p>The fourth power is dominated by extremes: a $4\sigma$ day contributes $256$, a $1\sigma$ day contributes $1$.
+  A Gaussian gives exactly $3$, which follows from $\phi'(z)=-z\phi(z)$ and one integration by parts:
+  $\mathbb{E}[Z^4]=3\,\mathbb{E}[Z^2]=3$. Hence <em>excess</em> kurtosis $=\operatorname{kurt}-3$, so $0$ means
+  Gaussian tails. Skew is the same construction with the third (odd) power, so it keeps sign and detects a longer
+  tail on one side.</p>
+
+  <table>
+    <tr><th>Statistic</th><th class="num">Mean across 51</th><th class="num">Range</th><th class="num">2-SE noise band</th><th>Verdict</th></tr>
+    <tr><td>Excess kurtosis</td><td class="num">&minus;0.026</td><td class="num">[&minus;0.463, +0.556]</td><td class="num">&plusmn;0.438</td><td><span class="pill g">Gaussian tails</span></td></tr>
+    <tr><td>Skew</td><td class="num">+0.002</td><td class="num">[&minus;0.237, +0.218]</td><td class="num">&plusmn;0.219</td><td><span class="pill g">symmetric</span></td></tr>
+    <tr><td>Jarque-Bera rejections</td><td class="num" colspan="2">at the chance rate (~2.6 of 51 expected)</td><td class="num">&mdash;</td><td><span class="pill g">no evidence against Normal</span></td></tr>
+  </table>
+
+  <p>For scale, real equity markets show excess kurtosis of $+3$ to $+10$. A pooled QQ-plot confirms visually: the
+  points trace a straight diagonal <em>into both corners</em>, meaning the extremes are exactly as large as a
+  Gaussian predicts, no fatter.</p>
+
+  <div class="callout finding"><span class="lbl">Finding</span>
+    Returns are Gaussian, symmetric and thin-tailed. <strong>Forbidden on evidence:</strong> tail hedging, crash
+    machinery, and deep or nonlinear ML. <strong>Licensed:</strong> linear statistics, which are provably sufficient.
+  </div>
+</section>
+
+<section id="a-vol">
+  <div class="step">Part I · 4</div>
+  <h2>Volatility: no clustering, wide dispersion, and rock-solid stability</h2>
+
+  <p>Being Gaussian overall says nothing about <em>ordering</em>. In real markets big moves cluster. To isolate
+  magnitude we square the returns, which throws away sign; and since daily means are $\approx0$,
+  $\operatorname{Var}(r)\approx\mathbb{E}[r^2]$, so each $r_t^2$ is that day's contribution to variance. The question
+  "does volatility cluster?" becomes "is $r_t^2$ autocorrelated?"</p>
+
+  <table>
+    <tr><th class="num">Lag</th><th class="num">1</th><th class="num">2</th><th class="num">3</th><th class="num">5</th><th class="num">10</th><th>2-SE band</th></tr>
+    <tr><td>Mean autocorr of $r^2$</td><td class="num">&minus;0.006</td><td class="num">&minus;0.004</td><td class="num">+0.001</td><td class="num">+0.003</td><td class="num">~0</td><td>&plusmn;0.090</td></tr>
+  </table>
+
+  <p>Zero at every lag, on $r^2$ and on the more robust $|r|$. Real markets show $\approx+0.2$ at lag 1. A GARCH(1,1)
+  models $\sigma_t^2=\omega+\alpha r_{t-1}^2+\beta\sigma_{t-1}^2$; with no clustering, $\alpha,\beta\to0$ and it
+  collapses to a single constant variance. <strong>So GARCH and volatility timing are off the table</strong>, and
+  each instrument's risk is one fixed number.</p>
+
+  <p>How big a number? Annual volatility spans <strong>15.7% to 64.7%</strong>, a <strong>4.1&times;</strong> spread.
+  Equal-dollar sizing would let the wild names dominate risk entirely. And the calmest instrument is ALGO &mdash; the
+  second clue that it is a diversified average. Then the stability audit:</p>
+
+  <div class="callout finding"><span class="lbl">Volatility split-half stability = 0.982</span>
+    About as stable as an empirical parameter ever gets. The ranking of instruments by riskiness barely moves between
+    halves. Our risk unit is validated: measure it on data we hold, rely on it for data we do not.
+  </div>
+</section>
+
+<section id="a-market">
+  <div class="step">Part I · 5</div>
+  <h2>ALGO <em>is</em> the market</h2>
+
+  <p>Average pairwise correlation across all 2,550 off-diagonal entries is <strong>+0.200</strong>. Under independence
+  each pairwise correlation would scatter around zero with $\operatorname{SE}\approx 1/\sqrt{T}=0.045$, and their
+  average would be essentially zero. A systematic $+0.200$ is the footprint of a shared factor.</p>
+
+  <p>To identify it: an index is the average of its constituents, because averaging 50 instruments cancels their
+  independent idiosyncratic wiggles and leaves only the common movement. So we test ALGO against the equal-weight
+  basket of the other 50 on three things that each say something different.</p>
+
+  <table>
+    <tr><th>Test</th><th class="num">Value</th><th>What it tells us</th></tr>
+    <tr><td>Correlation with the basket</td><td class="num">0.9930</td><td>They are the same thing.</td></tr>
+    <tr><td>Regression slope</td><td class="num">1.006</td><td>ALGO moves one-for-one, not levered or damped.</td></tr>
+    <tr><td>Volatility (ALGO vs basket)</td><td class="num">0.0099 / 0.0098</td><td>Lowest of all 51; the fingerprint of diversification.</td></tr>
+  </table>
+
+  <div class="callout"><span class="lbl">Correlation and slope are not the same thing</span>
+    Both divide the same covariance, but by different things:
+    $\rho = \frac{\operatorname{cov}}{\sigma_x\sigma_y}$ while $\text{slope}=\frac{\operatorname{cov}}{\sigma_x^2}$,
+    hence $\text{slope}=\rho\cdot\frac{\sigma_y}{\sigma_x}$. They coincide <em>only</em> when the volatilities match,
+    which here they happen to. Had ALGO's volatility been double, the slope would read $\approx2$ with an unchanged
+    correlation. The notebook <code>assert</code>s this identity rather than trusting it.
+  </div>
+
+  <div class="callout finding"><span class="lbl">Finding</span>
+    ALGO is the market index. Combined with its $10\times$ cap and $5\times$ cheaper commission, it is the
+    <strong>designed hedging vehicle</strong>. Architecture: generate alpha on instruments 1–50, cancel the net market
+    exposure with ALGO.
+  </div>
+</section>
+
+<section id="a-factors">
+  <div class="step">Part I · 6</div>
+  <h2>Exactly three factors, and the phantom fourth</h2>
+
+  <p>The correlation matrix $C$ is a machine: feed it any portfolio of weights $w$ and it returns that portfolio's
+  variance, $w^\top C w$. Some portfolios swing hard ("hold everything": the common factor reinforces), others barely
+  swing ("long one, short another": it cancels). Maximising $w^\top C w$ subject to $\lVert w\rVert=1$ gives, via a
+  Lagrange multiplier, $C w = \lambda w$. So the special directions are the <strong>eigenvectors</strong>, and</p>
+
+  <div class="eq">$$\operatorname{Var}(w) = w^\top C w = w^\top(\lambda w) = \lambda.$$</div>
+
+  <p><strong>The eigenvalue <em>is</em> the variance of the portfolio described by its eigenvector.</strong> This is
+  PCA, derived rather than named. Because we use the <em>correlation</em> matrix, every instrument is standardised to
+  variance 1, so the eigenvalues must sum to $N=51$ (the notebook asserts this). In a world with no common factor the
+  variance spreads evenly and every eigenvalue is $\approx1$.</p>
+
+  <h4>Why "$\lambda>1$" is not good enough</h4>
+  <p>With only 499 days, unrelated instruments show sample correlations of $\pm0.045$ by luck, and across 1,275 pairs
+  those accidents conspire. Even with <em>no</em> structure the eigenvalues spread around 1. Marchenko-Pastur gives the
+  exact ceiling luck can reach, with $q=N/T$:</p>
+
+  <div class="eq">$$\lambda_{\max}=\bigl(1+\sqrt{q}\bigr)^2 = 1.74$$</div>
+
+  <div class="callout caveat"><span class="lbl">An assumption we violate, and the correction</span>
+    Marchenko-Pastur describes a null world with <em>no</em> structure. Ours has a market factor absorbing 22.7% of
+    the variance, so the remaining factors compete for less variance than the theorem assumes and the honest ceiling
+    is <em>lower</em>. We compute the market-adjusted ceiling
+    $\tilde\lambda_{\max}=\left(1-\frac{\lambda_1}{N}\right)\bigl(1+\sqrt{q}\bigr)^2 = 1.35$ and accept the conclusion
+    only if it survives the stricter bar. It does.
+  </div>
+
+  <table>
+    <tr><th>Rank</th><th class="num">Eigenvalue</th><th>Verdict</th></tr>
+    <tr class="best"><td>1 · the market (ALGO)</td><td class="num">11.55</td><td>22.7% of all variance <span class="pill g">real</span></td></tr>
+    <tr class="best"><td>2 · sector</td><td class="num">2.84</td><td>clears both ceilings <span class="pill g">real</span></td></tr>
+    <tr class="best"><td>3 · sector</td><td class="num">1.97</td><td>clears both ceilings <span class="pill g">real</span></td></tr>
+    <tr><td>4</td><td class="num">1.27</td><td>above 1, below 1.35 and 1.74 <span class="pill r">noise</span></td></tr>
+  </table>
+
+  <div class="callout danger"><span class="lbl">This is how overfit models are born</span>
+    The fourth eigenvalue is $1.27$ &mdash; comfortably above 1. The textbook Kaiser rule ("keep eigenvalues above 1")
+    would have declared it a factor, and a model built on it would be fitting pure sampling noise. The noise ceiling is
+    what stands between us and a phantom.
+  </div>
+
+  <h4>An independent cross-check</h4>
+  <p>If every pair had the same correlation $\rho$, then $C=(1-\rho)I+\rho\mathbf{1}\mathbf{1}^\top$ and exactly
+  $\lambda_1 = 1+(N-1)\rho$. Plugging in the average pairwise correlation from a completely different calculation:
+  $1 + 50\times0.200 = 10.98$, against an observed $11.55$. Agreement within 4.9%. <strong>Two unrelated calculations
+  agreeing means neither is a coding error</strong>, and the small excess is the sector factors leaking extra
+  co-movement into the first component.</p>
+</section>
+
+<section id="a-beta">
+  <div class="step">Part I · 7</div>
+  <h2>Beta, residuals, and the collapse that makes everything work</h2>
+
+  <p>Beta is not a definition; it is derived. Choose $b$ to leave the smallest unexplained residual:</p>
+  <div class="eq">
+  $$\frac{\partial}{\partial b}\sum_t\bigl(r_{i,t}-b\,r_{m,t}\bigr)^2=0
+  \;\Longrightarrow\; \beta_i=\frac{\operatorname{cov}(r_i,r_m)}{\operatorname{Var}(r_m)}$$
+  </div>
+  <p>Setting $i=m$ gives $\beta_m=1$ exactly &mdash; a free correctness check the notebook asserts. Betas average 0.98
+  (range 0.50 to 1.68), as they must, since the market <em>is</em> the average of the instruments.</p>
+
+  <table>
+    <tr><th>Quantity</th><th class="num">Value</th><th>Consequence</th></tr>
+    <tr><td>Beta split-half stability</td><td class="num">0.780</td><td>Persistent and usable, but noticeably noisier than volatility's 0.982, because beta is a <em>ratio of two estimates</em> and inherits noise from both. <strong>Shrink it.</strong></td></tr>
+    <tr><td>Residual correlation with ALGO</td><td class="num">4.7e&minus;16</td><td>Zero by construction; this verifies our arithmetic, not the market.</td></tr>
+    <tr class="best"><td>Average pairwise correlation, before &rarr; after hedge</td><td class="num">+0.200 &rarr; &minus;0.010</td><td>Removing <em>one</em> factor destroyed nearly all co-movement.</td></tr>
+    <tr><td>Residual eigenvalues after hedge</td><td class="num">3.87, 2.63, 1.59, …</td><td>Market factor gone; exactly the two sector factors survive above the $N=50$ ceiling of 1.73, as predicted.</td></tr>
+  </table>
+
+  <h4>Why $-0.010$ and not exactly zero?</h4>
+  <p>Not a bug. ALGO is almost exactly the cross-sectional average, so subtracting $\beta_i r_{m,t}$ approximately
+  <em>demeans each day across instruments</em>. Demeaned numbers must sum to zero, so if 49 are above average the 50th
+  is forced below: a mechanical negative correlation of exactly $-\frac{1}{N-1}=-0.0204$ for perfect demeaning. The
+  notebook verifies this by demeaning exactly (giving $-0.0169$) and confirms our hedge lands part-way there, as it
+  should for an approximate demeaning.</p>
+
+  <div class="callout finding"><span class="lbl">The consequence that makes the strategy simple</span>
+    After the hedge the 50 bets are <strong>near-independent</strong>, so the residual covariance matrix is
+    approximately diagonal. The mean-variance optimal position, which in general requires inverting a $50\times50$
+    covariance matrix estimated from 499 days (a statistical nightmare), therefore collapses to
+    $\text{dollars}_j \propto \text{prediction}_j / \sigma_j$. <strong>Inverse-volatility sizing is not a heuristic
+    here. It is the optimal solution, given that the hedge made the bets independent.</strong>
+  </div>
+</section>
+
+<!-- ================================================== PART II -->
+<section id="s-dead">
+  <div class="step">Part II · 8</div>
+  <h2>What is dead: momentum, drift, own-reversal</h2>
+
+  <table>
+    <tr><th>Test</th><th class="num">Result</th><th>Meaning</th></tr>
+    <tr><td>Drift stability (does mean return persist?)</td><td class="num">&minus;0.034</td><td>No instrument reliably rises or falls. Past winners tell you nothing. <span class="pill r">dead</span></td></tr>
+    <tr><td>Own-return lag-1 autocorrelation</td><td class="num">mean &minus;0.004</td><td>Inside the &plusmn;0.090 noise band.</td></tr>
+    <tr><td>Stability of that autocorrelation</td><td class="num">+0.072</td><td>The instruments that <em>look</em> like they trend do not do it again in the other half. <span class="pill r">dead</span></td></tr>
+  </table>
+
+  <p>This is the trap the competition is built around. The starter file <code>too_much_alpha.py</code> trades exactly
+  this own-momentum signal, and it scores <strong>0.10</strong>. The obvious idea is a strawman, and we have
+  <em>proven</em> why rather than assumed it. It also points at the only door left: if an instrument's own past cannot
+  predict it, the only place to look is <strong>other instruments' pasts</strong>.</p>
+</section>
+
+<section id="s-leadlag">
+  <div class="step">Part II · 9</div>
+  <h2>Lead-lag: the only surviving signal</h2>
+
+  <div class="eq">$$L_{ij}=\operatorname{corr}\!\left(z_{i,t},\,z_{j,t+1}\right)=\frac{1}{T-1}\sum_{t}z_{i,t}\,z_{j,t+1}$$</div>
+
+  <p>Built on market-neutral residuals, so we are not merely rediscovering that everything follows the market. The
+  diagonal is own-autocorrelation, already dead, so it is zeroed. That leaves $50\times49=2{,}450$ cross relationships.
+  We are about to run 2,450 statistical tests, so we defend three ways rather than one.</p>
+
+  <h4>Defence 1: generate the null instead of assuming it</h4>
+  <p>The textbook says $2450\times2(1-\Phi(3))\approx6.6$ entries should exceed three standard errors by chance &mdash;
+  but that assumes the entries behave like independent Normal draws, which is an assumption about our data. So we
+  <em>generate</em> chance: permute the day ordering 300 times, which destroys any $t\to t+1$ relationship while
+  preserving each day's cross-sectional structure, and recount.</p>
+
+  <table>
+    <tr><th>Quantity</th><th class="num">Value</th></tr>
+    <tr><td>Observed pairs beyond 3 s.e. (threshold 0.134)</td><td class="num">21</td></tr>
+    <tr><td>Expected under the <em>analytic</em> null</td><td class="num">6.6</td></tr>
+    <tr><td>Expected under the <em>empirical</em> (permutation) null</td><td class="num">6.8</td></tr>
+    <tr><td>Permutation null 95th percentile</td><td class="num">12</td></tr>
+    <tr class="best"><td>Permutation $p$-value</td><td class="num">&lt; 0.0001</td></tr>
+    <tr><td>Strongest single pair</td><td class="num">0.211</td></tr>
+  </table>
+
+  <p>The analytic assumption was <em>confirmed</em> rather than trusted, and the observed count is far outside what
+  chance produces.</p>
+
+  <h4>Defence 2: control the false discovery rate</h4>
+  <p>Benjamini-Hochberg: sort the $m$ $p$-values ascending and find the largest $k$ with $p_{(k)}\le\frac{k}{m}q$.</p>
+  <table>
+    <tr><th class="num">$q$</th><th class="num">0.05</th><th class="num">0.10</th><th class="num">0.20</th></tr>
+    <tr><td>Individual pairs surviving</td><td class="num">1</td><td class="num">4</td><td class="num">13</td></tr>
+  </table>
+
+  <div class="callout finding"><span class="lbl">The single most important design consequence</span>
+    Only <strong>one</strong> pair survives strict FDR control. No single pair is a goldmine. The signal is faint and
+    spread across many pairs, so it must be <strong>aggregated, never cherry-picked</strong>. A strategy that traded
+    "the significant pairs" would be trading one bet.
+  </div>
+
+  <h4>Defence 3: the stability audit, on the matrix itself</h4>
+  <table>
+    <tr><th>Signal</th><th class="num">Split-half stability</th><th>Verdict</th></tr>
+    <tr><td>Drift</td><td class="num">&minus;0.034</td><td><span class="pill r">noise</span></td></tr>
+    <tr><td>Own-autocorrelation</td><td class="num">+0.072</td><td><span class="pill r">noise</span></td></tr>
+    <tr class="best"><td>Lead-lag matrix</td><td class="num">+0.110</td><td><span class="pill g">real, repeatable</span></td></tr>
+  </table>
+</section>
+
+<section id="s-breadth">
+  <div class="step">Part II · 10</div>
+  <h2>Why a stability of 0.110 is still worth a fortune</h2>
+
+  <p>A split-half correlation of $0.110$ looks hopeless next to volatility's $0.982$. Two honest answers, and it is
+  easy to tell a comforting story here, so we tested one and it failed.</p>
+
+  <p><strong>What 0.110 means.</strong> Correlating two independent noisy measurements of the same truth gives the
+  fraction of measured variance that is real signal. So roughly $11\%$ of each matrix entry is structure and $89\%$ is
+  estimation noise. The entries are mostly noise. That is a fact, not spin.</p>
+
+  <div class="callout danger">
+    <span class="lbl">A tempting story that we tested and refuted</span>
+    One might hope that summing over 50 instruments makes the <em>prediction</em> far more stable than the individual
+    entries, because noise cancels. We measured it directly: entry stability $+0.110$ versus prediction stability
+    $+0.096$. <strong>They are the same. Aggregation does not stabilise the predictor.</strong> Any claim that it does
+    would be wishful thinking, and an earlier draft of this project made exactly that claim before the test refuted it.
+  </div>
+
+  <p><strong>The real reason a weak signal pays: breadth.</strong> What matters is not the stability of one entry, but
+  how much predictive information the aggregate carries, applied across many bets. Grinold's fundamental law:</p>
+
+  <div class="eq">$$\mathrm{IR}\;\approx\;\mathrm{IC}\times\sqrt{\text{breadth}}$$</div>
+
+  <p>We measure an out-of-sample information coefficient of $\mathrm{IC}=0.048$ (matrix fitted on the first half,
+  scored on the second, $t\approx5.0$, positive on 61% of days). With 50 instruments traded on each of 250 days,
+  breadth is at most $12{,}500$, so $\mathrm{IR}\lesssim 0.048\times\sqrt{12{,}500}\approx 5.4$.</p>
+
+  <p>Our realised Sharpe of <strong>4.97</strong> sits just under that theoretical bound, which is exactly what a
+  correctly-implemented aggregation of this signal should produce. <em>A per-day IC of 0.048 is unremarkable; the same
+  0.048 applied to 12,500 bets a year is not.</em></p>
+
+  <p class="muted">Caveats, since the law is an idealisation: the bets are not fully independent, the formula ignores
+  commission, position limits and the score's Sharpe tax, and it assumes a stable IC. It bounds what is possible; it
+  does not promise it. Only the backtest settles that.</p>
+</section>
+
+<section id="s-reversal">
+  <div class="step">Part II · 11</div>
+  <h2>Cross-sectional reversal: real, orthogonal, and weaker</h2>
+
+  <p>Instruments that outperformed their peers over the past 20 days tend to underperform next:
+  $s_{i,t}=-\sum_{u=t-19}^{t}e_{i,u}$. We score it with the information coefficient, the cross-sectional correlation
+  between today's signal and tomorrow's residual return.</p>
+
+  <p>Two traps defused. <strong>Overlapping windows:</strong> consecutive signals share 19 of 20 days, so the daily ICs
+  are not independent and the naive $t$ overstates. A Newey-West correction with Bartlett weights barely moves it
+  ($2.66\to2.58$), because the IC series' own autocorrelation is only $0.082$. <strong>A single number hides
+  instability:</strong> so we split it.</p>
+
+  <table>
+    <tr><th>Measure</th><th class="num">Lead-lag</th><th class="num">Reversal</th></tr>
+    <tr><td>Full-sample IC</td><td class="num">&mdash;</td><td class="num">+0.0218 (NW $t$ = 2.58)</td></tr>
+    <tr><td>IC first half / second half</td><td class="num">&mdash;</td><td class="num">+0.0271 / +0.0166</td></tr>
+    <tr><td>Rolling 60-day IC positive</td><td class="num">&mdash;</td><td class="num">78% of windows</td></tr>
+    <tr class="best"><td><strong>Out-of-sample IC</strong> (same unseen days)</td><td class="num"><strong>+0.0484</strong> ($t$ 4.96)</td><td class="num">+0.0166 ($t$ 1.34)</td></tr>
+    <tr><td>Cross-sectional correlation between the two signals</td><td class="num" colspan="2">&minus;0.008 &rarr; orthogonal</td></tr>
+  </table>
+
+  <div class="callout caveat"><span class="lbl">A correction to the project notes</span>
+    <code>CLAUDE.md</code> records that reversal's "rolling IC is positive only ~22% of the time and flips sign".
+    Measured with the reversal signal defined as <em>minus</em> the past 20-day residual return, the IC is positive in
+    <strong>78%</strong> of rolling windows and has the same sign in both halves. These are the same fact under
+    opposite sign conventions, but the note's wording implies an instability the data does not show. Reversal is
+    consistently present; it is simply <em>weaker</em>, roughly one third of lead-lag out of sample.
+  </div>
+</section>
+
+<!-- ================================================== PART III -->
+<section id="b-backtester">
+  <div class="step">Part III · 12</div>
+  <h2>The backtester: earn the right to make claims</h2>
+
+  <p>Nothing in Part I or II touched the score function. Predictive information is not profit once position limits,
+  commission and the Sharpe tax apply. So before writing a single position we built <code>backtester.py</code>, a
+  replica of <code>eval.py</code>'s <code>calcPL</code>, generalised to score any strategy on <em>many</em> windows and
+  return a score <em>distribution</em> rather than one lucky point.</p>
+
+  <h4>Four subtleties that are easy to get wrong</h4>
+  <ul>
+    <li>Commission is charged into cash with a <strong>one-day lag</strong> (the <code>comm</code> subtracted on day
+      $t$ is day $t-1$'s).</li>
+    <li>The first test-day iteration is a <strong>warm-up</strong> that sets position but is <em>not scored</em>.</li>
+    <li>Positions are re-clipped to <strong>integer share limits at each day's price</strong>, even if you do not trade.</li>
+    <li>The P&amp;L standard deviation is <strong>population</strong> (<code>ddof=0</code>), not sample.</li>
+  </ul>
+
+  <div class="callout finding"><span class="lbl">Correctness gate passed</span>
+    Run on the starter strategy, the backtester reproduces <code>eval.py</code> to the cent:
+    $\mu = 10.3597$, $\sigma = 1640.1991$, dollar volume $5{,}919{,}621$, score $0.1023$. <code>eval.py</code> prints
+    $10.4$, $1640.20$, $5{,}919{,}621$, $0.10$. Identical. Only now may we trust its verdicts on our own strategy.
+  </div>
+</section>
+
+<section id="b-protocol">
+  <div class="step">Part III · 13</div>
+  <h2>The anti-overfitting protocol</h2>
+
+  <p>The easiest way to produce a beautiful, worthless backtest is to tune parameters on the window you then report.
+  So we split the days by <em>role</em>, not just by time.</p>
+
+  <table>
+    <tr><th>Set</th><th>Scored days</th><th>Used for</th></tr>
+    <tr><td><strong>Selection</strong></td><td>[125, 350)</td><td>Every parameter choice. Six overlapping 100-day windows.</td></tr>
+    <tr class="best"><td><strong>Holdout</strong></td><td>[350, 500)</td><td>Nothing, until the configuration was frozen. Three windows.</td></tr>
+  </table>
+
+  <p>Each score is <em>additionally</em> out-of-sample in time, because the strategy only ever sees prices up to the
+  current day and refits daily. And we ran four independent falsification tests on the final configuration:</p>
+
+  <ol>
+    <li><strong>Holdout.</strong> Score on windows never used to choose anything.</li>
+    <li><strong>Frozen model.</strong> Estimate the matrix once on days 1–250 and trade 251–500 blind, never refit. This
+      is the strictest possible test of whether the structure is stationary.</li>
+    <li><strong>Placebo.</strong> Identical machinery, but a <em>random</em> matrix of matched scale. If there is a
+      look-ahead bug it will profit. It must lose.</li>
+    <li><strong>Plateau, not peak.</strong> Prefer a parameter sitting on a flat region over one at a sharp maximum,
+      and re-check any peak under several different evaluation grids.</li>
+  </ol>
+
+  <div class="callout"><span class="lbl">Pre-registration</span>
+    The configuration was written down and justified <em>before</em> the holdout was run once. The holdout number below
+    is therefore a genuine test, not another tuning knob.
+  </div>
+</section>
+
+<section id="b-design">
+  <div class="step">Part III · 14</div>
+  <h2>Strategy design: every choice traces to a measured fact</h2>
+
+  <p>Each day, causally from history only:</p>
+
+  <pre><span class="c"># 1. log returns</span>
+r = np.diff(np.log(prcSoFar), axis=1)
+
+<span class="c"># 2. market-neutral residuals. Beta is FULLY shrunk to 1.0, so we just subtract ALGO.</span>
+resid = r - r[0]
+R = resid[1:]                               <span class="c"># alpha universe: instruments 1..50</span>
+
+<span class="c"># 3. standardise, then build the lead-lag matrix</span>
+Z = (R - R.mean(1, keepdims=True)) / sd[:, None]
+L = Z[:, :-1] @ Z[:, 1:].T / n
+np.fill_diagonal(L, 0.0)                    <span class="c"># own-autocorrelation is dead</span>
+L[np.abs(L) &lt; 1.0 / np.sqrt(n)] = 0.0       <span class="c"># drop sub-one-s.e. entries as noise</span>
+
+<span class="c"># 4. aggregate into a prediction, make it dollar-neutral</span>
+sig = L.T @ Z[:, -1];  sig -= sig.mean()
+
+<span class="c"># 5. size: mean-variance optimal collapses to prediction / volatility</span>
+dollars = sig / sd
+dollars *= (1.2 * 50 * 0.95 * 10_000) / np.abs(dollars).sum()
+dollars = np.clip(dollars, -9500, 9500)
+
+<span class="c"># 6. hedge net market exposure with ALGO (beta = 1 for all)</span>
+hedge = np.clip(-dollars.sum(), -95_000, 95_000)</pre>
+
+  <table>
+    <tr><th>Design choice</th><th>The measured fact that forces it</th></tr>
+    <tr><td>Linear model; no ML, no GARCH, no tail hedging</td><td>Returns are Gaussian, symmetric, thin-tailed, with no volatility clustering. For Gaussians all dependence is linear, so there is nothing nonlinear to find.</td></tr>
+    <tr><td>No trend, no timing; always fully invested</td><td>Drift stability &minus;0.034 and own-autocorrelation stability +0.072. The edge is purely cross-sectional selection.</td></tr>
+    <tr><td>Aggregate the whole matrix; never cherry-pick pairs</td><td>Only 1 pair survives FDR at $q=0.05$. The signal pays through breadth, $\mathrm{IR}\approx\mathrm{IC}\sqrt{\text{breadth}}$.</td></tr>
+    <tr><td>Zero entries within one standard error</td><td>Entries are $\approx89\%$ noise. A one-s.e. cut is the canonical threshold, and it was the empirical optimum under three different evaluation grids.</td></tr>
+    <tr class="best"><td><strong>Do not estimate betas at all; use $\beta=1$</strong></td><td>Betas average 0.98 but their split-half stability is only 0.780 versus volatility's 0.982, because beta is a ratio of two estimates. Full shrinkage to the cross-sectional mean removes an entire noisy parameter, and improved every window tested.</td></tr>
+    <tr><td>Inverse-volatility sizing</td><td>After the ALGO hedge, residual pairwise correlation is &minus;0.010, so the covariance is near-diagonal and mean-variance optimality reduces to $\text{pred}/\sigma$. Volatility's 0.982 stability makes $\sigma$ trustworthy.</td></tr>
+    <tr><td>Hedge with ALGO</td><td>$\rho = 0.993$ with the market basket, $10\times$ cap, $5\times$ cheaper commission.</td></tr>
+    <tr><td>Deploy capital to the caps (gross scaling)</td><td>Score is linear in size once Sharpe $&gt;3$, because doubling positions doubles both $\mu$ and $\sigma$, leaving $\mathrm{frac}$ unchanged.</td></tr>
+    <tr><td>No position smoothing</td><td>Commission is 1bp: cheap. Smoothing damps the daily signal and cost score on every window tested.</td></tr>
+  </table>
+</section>
+
+<section id="b-search">
+  <div class="step">Part III · 15</div>
+  <h2>Variant search, on the selection set only</h2>
+
+  <p>Every number in this section comes from windows scored on days [125, 350). The holdout was untouched throughout.
+  Several results contradicted our prior expectations, which is the point of measuring.</p>
+
+  <h4>Position scaling: the single largest lever</h4>
+  <p>Because score is nearly linear in size, how we convert a signal into dollars matters more than any signal
+  refinement. Scaling so that the <em>largest</em> position hits the cap leaves most of the book tiny and wastes
+  capital. Scaling <em>gross exposure</em> and then clipping per name deploys far more.</p>
+  <table>
+    <tr><th class="num">gross_frac</th><th class="num">0.6</th><th class="num">0.8</th><th class="num">1.0</th><th class="num">1.2</th><th class="num">1.5</th><th class="num">2.0</th><th class="num">3.0</th></tr>
+    <tr><td>Mean selection score</td><td class="num">231.9</td><td class="num">261.4</td><td class="num">280.4</td><td class="num">293.2</td><td class="num">295.9</td><td class="num">284.8</td><td class="num">264.1</td></tr>
+    <tr><td>Mean Sharpe</td><td class="num">4.38</td><td class="num">4.25</td><td class="num">4.20</td><td class="num">4.16</td><td class="num">3.98</td><td class="num">3.65</td><td class="num">3.25</td></tr>
+  </table>
+  <p>A broad hump. Past $\approx1.5$, every position is clipped, so $\mu$ stops growing while the clipping distorts
+  the signal and Sharpe keeps falling. We chose <strong>1.2</strong>, which is on the plateau and maximises the
+  <em>worst</em> window (250.3) rather than the mean.</p>
+
+  <h4>The significance threshold: a sharp peak, interrogated</h4>
+  <p>A sharp maximum is the classic signature of overfitting, so we re-ran it under three different evaluation grids.
+  The ordering was identical in all three, and the optimum sits exactly at the canonical one-standard-error cut, a
+  principled value rather than one found by search.</p>
+  <table>
+    <tr><th class="num">signif_se</th><th class="num">0.0</th><th class="num">0.8</th><th class="num">0.9</th><th class="num">0.95</th><th class="num">1.00</th><th class="num">1.05</th><th class="num">1.1</th><th class="num">1.2</th><th class="num">1.4</th></tr>
+    <tr><td>Grid A (len 100, step 25)</td><td class="num">244.1</td><td class="num">247.0</td><td class="num">253.0</td><td class="num">269.8</td><td class="num"><strong>293.2</strong></td><td class="num">280.6</td><td class="num">271.1</td><td class="num">247.7</td><td class="num">194.3</td></tr>
+    <tr><td>Grid B (len 125, step 15)</td><td class="num">253.4</td><td class="num">255.6</td><td class="num">259.2</td><td class="num">272.7</td><td class="num"><strong>297.4</strong></td><td class="num">279.8</td><td class="num">270.5</td><td class="num">249.7</td><td class="num">185.5</td></tr>
+    <tr><td>Grid C (len 75, step 10)</td><td class="num">233.8</td><td class="num">231.1</td><td class="num">233.6</td><td class="num">250.2</td><td class="num"><strong>274.8</strong></td><td class="num">254.9</td><td class="num">243.8</td><td class="num">220.8</td><td class="num">163.9</td></tr>
+  </table>
+
+  <h4>Beta shrinkage: the counter-intuitive win</h4>
+  <p>Monotone all the way to full shrinkage. $\kappa=1.0$ means <em>estimate no betas at all</em> and use 1.0 for every
+  instrument. Fewer estimated parameters, strictly better results. This is the 0.780 stability figure cashing out.</p>
+  <table>
+    <tr><th class="num">beta_shrink $\kappa$</th><th class="num">0.6</th><th class="num">0.8</th><th class="num">0.9</th><th class="num">1.0</th></tr>
+    <tr><td>Mean selection score</td><td class="num">255.6</td><td class="num">270.6</td><td class="num">288.9</td><td class="num"><strong>295.9</strong></td></tr>
+  </table>
+
+  <h4>Three ideas that sounded good and failed</h4>
+  <table>
+    <tr><th>Idea</th><th>Rationale</th><th class="num">Result</th><th>Verdict</th></tr>
+    <tr><td>SVD rank truncation of $L$</td><td>Entries are 89% noise, so denoise by keeping the top singular directions.</td><td class="num">rank 3 &rarr; 61.7 · rank 10 &rarr; 54.8 · rank 35 &rarr; 104.6 · none &rarr; 98.9</td><td><span class="pill r">hurts</span> The signal is spread across the full spectrum, not concentrated in a few directions.</td></tr>
+    <tr><td>Sector neutralisation</td><td>Two real sector factors exist, so remove them too.</td><td class="num">$k$=0 &rarr; 295.9 · $k$=1 &rarr; 288.2 · $k$=2 &rarr; 226.9 · $k$=3 &rarr; 154.5</td><td><span class="pill r">hurts</span> Removing them strips genuine lead-lag information that travels <em>through</em> sectors.</td></tr>
+    <tr><td>Position smoothing</td><td>Reduce turnover and commission.</td><td class="num">1.0 &rarr; 293.2 · 0.8 &rarr; 269.0 · 0.6 &rarr; 223.1</td><td><span class="pill r">hurts</span> At 1bp, commission is not the bottleneck; damping the daily signal is pure cost.</td></tr>
+    <tr><td>Rolling estimation window</td><td>Adapt to changing structure.</td><td class="num">expanding &rarr; 295.9 · 250d &rarr; 282.2 · 125d &rarr; 239.8</td><td><span class="pill r">hurts</span> The generator has constant parameters, so more data is strictly better. Consistent with the analysis.</td></tr>
+  </table>
+
+  <h4>The reversal sleeve: a genuine judgement call</h4>
+  <p>Adding the orthogonal reversal signal raises the mean selection score but degrades the worst window.</p>
+  <table>
+    <tr><th class="num">rev_w</th><th class="num">0.0</th><th class="num">0.1</th><th class="num">0.2</th><th class="num">0.3</th><th class="num">0.5</th></tr>
+    <tr><td>Mean selection score</td><td class="num">293.2</td><td class="num">303.4</td><td class="num"><strong>308.2</strong></td><td class="num">306.4</td><td class="num">281.7</td></tr>
+    <tr><td>Worst window</td><td class="num"><strong>250.3</strong></td><td class="num">232.7</td><td class="num">206.2</td><td class="num">188.2</td><td class="num">180.7</td></tr>
+  </table>
+  <p>We chose $\text{rev\_w}=0$: reversal's out-of-sample IC is one third of lead-lag's and it <em>decayed</em> between
+  halves ($0.0271\to0.0166$), so we preferred the configuration that protects the worst case. See the caveats for what
+  happened when we later scored the alternative on the holdout.</p>
+</section>
+
+<section id="b-results">
+  <div class="step">Part III · 16</div>
+  <h2>Validation results</h2>
+
+  <table>
+    <tr><th>Configuration</th><th class="num">Selection mean</th><th class="num">Selection min</th><th class="num">Holdout mean</th><th class="num">Holdout min</th><th class="num">% positive</th></tr>
+    <tr><td>Naive first-guess build</td><td class="num">98.9</td><td class="num">70.4</td><td class="num">143.5</td><td class="num">96.2</td><td class="num">100%</td></tr>
+    <tr class="best"><td><strong>PRIMARY (pre-registered, submitted)</strong></td><td class="num">293.2</td><td class="num">250.3</td><td class="num"><strong>353.9</strong></td><td class="num">277.7</td><td class="num">100%</td></tr>
+    <tr><td>ALT (+ reversal sleeve)</td><td class="num">308.2</td><td class="num">206.2</td><td class="num">369.7</td><td class="num">308.2</td><td class="num">100%</td></tr>
+  </table>
+
+  <p>The holdout score (<strong>353.9</strong>) is <em>higher</em> than the selection score (293.2). That is the
+  opposite of what overfitting produces, and it is the strongest single piece of evidence that the parameters describe
+  the generator rather than the sample.</p>
+
+  <h4>Holdout window detail (PRIMARY)</h4>
+  <table>
+    <tr><th>Scored days</th><th class="num">Score</th><th class="num">Mean daily P&amp;L</th><th class="num">Sharpe</th></tr>
+    <tr><td>[350, 450)</td><td class="num">277.7</td><td class="num">$292.3</td><td class="num">4.37</td></tr>
+    <tr><td>[375, 475)</td><td class="num">366.2</td><td class="num">$376.3</td><td class="num">6.03</td></tr>
+    <tr><td>[400, 500)</td><td class="num">417.6</td><td class="num">$427.8</td><td class="num">6.40</td></tr>
+  </table>
+
+  <h4>The four falsification tests</h4>
+  <table>
+    <tr><th>Test</th><th class="num">Result</th><th>What it proves</th></tr>
+    <tr><td>Official <code>eval.py</code> (days 251–500)</td><td class="num">score 345.57, Sharpe 4.97, $\mu$ = $359.58</td><td>The headline number, from the real referee, not our replica.</td></tr>
+    <tr><td>Holdout, 3 windows</td><td class="num">mean 353.9, min 277.7, 100% positive</td><td>Robust on days never used for any decision.</td></tr>
+    <tr class="best"><td><strong>Frozen fit[1–250] &rarr; trade[251–500], never refit</strong></td><td class="num">score 242.75, Sharpe 3.64</td><td>The structure is <em>stationary</em>. A model that never sees the trading period still works. <strong>The most conservative honest estimate.</strong></td></tr>
+    <tr><td>Placebo: random matrix, matched scale</td><td class="num">score &minus;119.29</td><td>A fake signal <em>loses money</em>. Therefore no look-ahead leak, and the edge is the real lead-lag structure.</td></tr>
+  </table>
+
+  <h4>Constraint compliance</h4>
+  <table>
+    <tr><th>Constraint</th><th class="num">Limit</th><th class="num">Ours</th><th></th></tr>
+    <tr><td>Max non-ALGO dollar position</td><td class="num">$10,000</td><td class="num">$9,499</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>ALGO dollar position</td><td class="num">$100,000</td><td class="num">$3,485</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>Integer shares</td><td class="num">required</td><td class="num">yes</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>Total dollar volume</td><td class="num">&ge; $25,000</td><td class="num">$111,932,293</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>Runtime (250 calls)</td><td class="num">600 s</td><td class="num">0.05 s</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>Packages</td><td class="num">allow-list</td><td class="num">numpy only</td><td><span class="pill g">pass</span></td></tr>
+  </table>
+
+  <p class="muted">Note the ALGO hedge is small ($3,485) because the signal is already cross-sectionally demeaned, so
+  the book carries little net market exposure to begin with. The hedge is insurance, not a position.</p>
+</section>
+
+<!-- ================================================== FILES -->
+<section id="files">
+  <div class="step">Reference</div>
+  <h2>Every file in the repository</h2>
+
+  <table>
+    <tr><th>File</th><th>Role</th><th>Submit?</th></tr>
+    <tr><td><code>too_much_alpha.py</code></td><td><strong>The submission.</strong> Self-contained <code>getMyPosition(prcSoFar)</code>. No imports beyond numpy, no dependency on the other files. Every parameter is a named constant with the measured fact that justifies it in the docstring. <code>eval.py</code> already imports this module, so it runs unmodified. Rename to your team name at submission.</td><td><span class="pill g">yes</span></td></tr>
+    <tr><td><code>analysis.ipynb</code></td><td><strong>The research log.</strong> 90 cells. Builds every concept from first principles with worked examples, explains each code cell line by line, and enforces structural claims with <code>assert</code>. This is the evidence base for every design decision, and half the final grade is the research story.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>backtester.py</code></td><td><strong>The referee replica.</strong> <code>calc_pl</code> reproduces <code>eval.py</code>'s <code>calcPL</code> exactly (verified to the cent). <code>walk_forward</code> scores a strategy across many windows; <code>summarise</code> returns the score distribution. Also encodes the commission lag, warm-up day, daily re-clip and <code>ddof=0</code> subtleties.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategy.py</code></td><td><strong>The research engine.</strong> A configurable <code>LeadLag</code> class exposing every knob we tested (significance threshold, beta shrinkage, SVD rank, sector neutralisation, smoothing, reversal weight, estimation window, scaling mode). Used only to compare variants; the submission is a frozen, simplified copy of the winner.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>eval.py</code></td><td>The organisers' official scorer. Scores the last 250 days of <code>prices.txt</code>. Its import line already points at <code>too_much_alpha</code>, so <code>python eval.py</code> scores our strategy directly. We never modified it.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><em>the original</em> <code>too_much_alpha.py</code></td><td>The starter example we replaced: naive one-day own-momentum, which scores 0.10. Our analysis proves <em>why</em> it cannot work (own-autocorrelation stability +0.072). It is the strawman the competition is built around, and it remains recoverable from git history.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>prices.txt</code></td><td>The current stage's data: 500 days &times; 51 instruments, whitespace-separated, header row of tickers, ALGO first.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>documentation.html</code></td><td>This document.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>CLAUDE.md</code></td><td>Project guide and working notes carried between sessions.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>requirements-dev.txt</code></td><td>The exact grading-sandbox package set, for local reproduction.</td><td><span class="pill r">no</span></td></tr>
+  </table>
+
+  <h4>How to reproduce every number in this document</h4>
+  <pre><span class="c"># the official score (eval.py already imports too_much_alpha)</span>
+python eval.py
+
+<span class="c"># the holdout and the falsification tests</span>
+python -c "
+import pandas as pd
+from backtester import walk_forward, summarise
+import too_much_alpha
+prc = pd.read_csv('prices.txt', sep=r'\s+').values.T
+HOLD = dict(test_len=100, first_test_day=350, last_test_day=500, step=25)
+print(summarise(walk_forward(prc, too_much_alpha.getMyPosition, **HOLD)))
+"</pre>
+</section>
+
+<!-- ================================================== CAVEATS -->
+<section id="caveats">
+  <div class="step">Honesty</div>
+  <h2>Caveats, weakest claim first</h2>
+
+  <div class="callout caveat">
+    <span class="lbl">1 · Everything is measured on days 1–500, which we hold</span>
+    The selection/holdout split, the frozen test and the placebo are the strongest defences available, but both halves
+    still come from the same 500-day sample and the same generator. The only truly honest test is the next data
+    release. <strong>Validate on it; do not re-tune on it until validated.</strong> Of all our numbers, the frozen
+    result (<strong>242.8</strong>) is the one to quote as an expectation, not the 345.6.
+  </div>
+
+  <div class="callout caveat">
+    <span class="lbl">2 · The reversal variant beat us on the holdout, and we did not switch</span>
+    ALT (+reversal, weight 0.2) scored 369.7 mean / 308.2 min on the holdout, against PRIMARY's 353.9 / 277.7. It won
+    on both metrics. We did <strong>not</strong> switch, because choosing it <em>after</em> seeing the holdout would
+    consume the holdout and invalidate the very number that makes it look good. This is exactly the discipline that
+    separates a real result from a flattering one. The right way to settle it is to score both on the July 16 data
+    drop, once, and then pick.
+  </div>
+
+  <div class="callout caveat">
+    <span class="lbl">3 · The one-standard-error threshold is a hump, not a plateau</span>
+    Scores fall from 293 at $\text{signif\_se}=1.0$ to 248 at 1.2 and 194 at 1.4. We defended it by confirming the same
+    ordering under three different evaluation grids and by noting that 1.0 s.e. is a canonical, principled cut rather
+    than an arbitrary optimum. It is still the least flat parameter in the strategy and the most likely to disappoint.
+  </div>
+
+  <div class="callout caveat">
+    <span class="lbl">4 · Gross scaling deliberately exploits the position caps</span>
+    We scale gross exposure past the caps and clip, which puts most positions near $9,500. If the hidden window has
+    materially different price levels, the daily re-clip could force involuntary, commission-charged trims. The 0.95
+    target-fraction is the headroom against this, but it is calibrated on prices we have seen.
+  </div>
+
+  <div class="callout caveat">
+    <span class="lbl">5 · The breadth argument is an idealisation</span>
+    $\mathrm{IR}\approx\mathrm{IC}\sqrt{\text{breadth}}$ assumes independent bets, ignores commission, position limits
+    and the Sharpe tax, and assumes a stable IC. Our 50 residual bets are near-independent (pairwise correlation
+    &minus;0.010) but not exactly so. The law bounds what is possible; the backtest, not the law, is the evidence.
+  </div>
+
+  <h3>Next steps, in order of expected value</h3>
+  <ol>
+    <li><strong>July 16 drop:</strong> score PRIMARY and ALT once each, without re-tuning. Pick the winner. This
+      simultaneously validates the whole methodology and settles the reversal question.</li>
+    <li><strong>Shrink the matrix rather than threshold it.</strong> We tested a hard one-s.e. cut and a hard SVD
+      truncation. A smooth James-Stein style shrinkage, $L \to L \cdot \frac{\text{signal var}}{\text{total var}}$
+      entry by entry, is the statistically principled middle ground we did not try.</li>
+    <li><strong>Multi-lag structure.</strong> We only tested lag 1. If $i$ leads $j$ by two days, we are leaving that
+      on the table.</li>
+    <li><strong>Cost model for the clip.</strong> Quantify how much score the daily re-clip actually costs, and whether
+      a slightly lower target fraction pays for itself.</li>
+  </ol>
+</section>
+</main>
+</div>
+<footer>
+  Algothon 2026 · research, strategy and validation. Every figure reproduced from the 500-day test dataset with a
+  backtester verified to match the official scorer to the cent. Parameters chosen on days 125–350; holdout days
+  350–500 used once.
+</footer>
+</body>
+</html>
