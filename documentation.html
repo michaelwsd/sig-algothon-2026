@@ -803,33 +803,59 @@ hedge = np.clip(-dollars.sum(), -95_000, 95_000)</pre>
   <div class="step">Reference</div>
   <h2>Every file in the repository</h2>
 
+  <p>The repository is organised as <strong>one folder per round, with a shared core at the root</strong>. The
+  data, the scorer, the submission and the analysis notebook all describe <em>one dataset</em>, so they live
+  together. The backtester and the research engine are dataset-agnostic tools, so they are shared.</p>
+
+  <pre>sig-algothon-2026/
+  CLAUDE.md              <span class="c">project-wide guide</span>
+  backtester.py          <span class="c">SHARED · walk-forward backtester</span>
+  strategy.py            <span class="c">SHARED · configurable LeadLag research engine</span>
+  documentation.html     <span class="c">SHARED · this document</span>
+  requirements-dev.txt
+  test_round/            <span class="c">days 1-500 (released 8 July)</span>
+    prices.txt
+    eval.py              <span class="c">official scorer, never modified</span>
+    too_much_alpha.py    <span class="c">THE SUBMISSION</span>
+    analysis.ipynb       <span class="c">the research notebook</span>
+  general_round/         <span class="c">create when the 16 July data lands</span></pre>
+
   <table>
     <tr><th>File</th><th>Role</th><th>Submit?</th></tr>
-    <tr><td><code>too_much_alpha.py</code></td><td><strong>The submission.</strong> Self-contained <code>getMyPosition(prcSoFar)</code>. No imports beyond numpy, no dependency on the other files. Every parameter is a named constant with the measured fact that justifies it in the docstring. <code>eval.py</code> already imports this module, so it runs unmodified. Rename to your team name at submission.</td><td><span class="pill g">yes</span></td></tr>
-    <tr><td><code>analysis.ipynb</code></td><td><strong>The research log.</strong> 90 cells. Builds every concept from first principles with worked examples, explains each code cell line by line, and enforces structural claims with <code>assert</code>. This is the evidence base for every design decision, and half the final grade is the research story.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>backtester.py</code></td><td><strong>The referee replica.</strong> <code>calc_pl</code> reproduces <code>eval.py</code>'s <code>calcPL</code> exactly (verified to the cent). <code>walk_forward</code> scores a strategy across many windows; <code>summarise</code> returns the score distribution. Also encodes the commission lag, warm-up day, daily re-clip and <code>ddof=0</code> subtleties.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>strategy.py</code></td><td><strong>The research engine.</strong> A configurable <code>LeadLag</code> class exposing every knob we tested (significance threshold, beta shrinkage, SVD rank, sector neutralisation, smoothing, reversal weight, estimation window, scaling mode). Used only to compare variants; the submission is a frozen, simplified copy of the winner.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>eval.py</code></td><td>The organisers' official scorer. Scores the last 250 days of <code>prices.txt</code>. Its import line already points at <code>too_much_alpha</code>, so <code>python eval.py</code> scores our strategy directly. We never modified it.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>test_round/too_much_alpha.py</code></td><td><strong>The submission.</strong> Self-contained <code>getMyPosition(prcSoFar)</code>. No imports beyond numpy, no dependency on the other files. Every parameter is a named constant with the measured fact that justifies it in the docstring. <code>eval.py</code> already imports this module, so it runs unmodified. Rename to your team name at submission.</td><td><span class="pill g">yes</span></td></tr>
+    <tr><td><code>test_round/analysis.ipynb</code></td><td><strong>The research log.</strong> 90 cells. Builds every concept from first principles with worked examples, explains each code cell line by line, and enforces structural claims with <code>assert</code>. This is the evidence base for every design decision, and half the final grade is the research story.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>backtester.py</code> <span class="pill w">shared</span></td><td><strong>The referee replica.</strong> <code>calc_pl</code> reproduces <code>eval.py</code>'s <code>calcPL</code> exactly (verified to the cent). <code>walk_forward</code> scores a strategy across many windows; <code>summarise</code> returns the score distribution. Also encodes the commission lag, warm-up day, daily re-clip and <code>ddof=0</code> subtleties.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategy.py</code> <span class="pill w">shared</span></td><td><strong>The research engine.</strong> A configurable <code>LeadLag</code> class exposing every knob we tested (significance threshold, beta shrinkage, SVD rank, sector neutralisation, smoothing, reversal weight, estimation window, scaling mode). Used only to compare variants; the submission is a frozen, simplified copy of the winner.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>test_round/eval.py</code></td><td>The organisers' official scorer. Scores the last 250 days of <code>prices.txt</code>. Its import line already points at <code>too_much_alpha</code>, so <code>cd test_round &amp;&amp; python eval.py</code> scores our strategy directly. We never modified it.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><em>the original</em> <code>too_much_alpha.py</code></td><td>The starter example we replaced: naive one-day own-momentum, which scores 0.10. Our analysis proves <em>why</em> it cannot work (own-autocorrelation stability +0.072). It is the strawman the competition is built around, and it remains recoverable from git history.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>prices.txt</code></td><td>The current stage's data: 500 days &times; 51 instruments, whitespace-separated, header row of tickers, ALGO first.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>documentation.html</code></td><td>This document.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>test_round/prices.txt</code></td><td>This round's data: 500 days &times; 51 instruments, whitespace-separated, header row of tickers, ALGO first.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>documentation.html</code> <span class="pill w">shared</span></td><td>This document, cumulative across rounds.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>CLAUDE.md</code></td><td>Project guide and working notes carried between sessions.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>requirements-dev.txt</code></td><td>The exact grading-sandbox package set, for local reproduction.</td><td><span class="pill r">no</span></td></tr>
   </table>
 
   <h4>How to reproduce every number in this document</h4>
   <pre><span class="c"># the official score (eval.py already imports too_much_alpha)</span>
-python eval.py
+cd test_round && python eval.py
 
-<span class="c"># the holdout and the falsification tests</span>
+<span class="c"># the holdout and the falsification tests, run from the repo root</span>
 python -c "
-import pandas as pd
+import sys, pandas as pd
+sys.path.insert(0, 'test_round')
 from backtester import walk_forward, summarise
 import too_much_alpha
-prc = pd.read_csv('prices.txt', sep=r'\s+').values.T
+prc = pd.read_csv('test_round/prices.txt', sep=r'\s+').values.T
 HOLD = dict(test_len=100, first_test_day=350, last_test_day=500, step=25)
 print(summarise(walk_forward(prc, too_much_alpha.getMyPosition, **HOLD)))
 "</pre>
+
+  <div class="callout"><span class="lbl">Starting the next round</span>
+    Create <code>general_round/</code>, drop in the organisers' new <code>prices.txt</code> and
+    <code>eval.py</code>, copy the submission across, and seed a fresh notebook from the test-round one.
+    <strong>Then score the frozen configuration on the new data exactly once, before touching anything.</strong>
+    That single number is the honest out-of-sample test this whole project has been building toward, and
+    re-tuning first would destroy it.
+  </div>
 </section>
 
 <!-- ================================================== CAVEATS -->
