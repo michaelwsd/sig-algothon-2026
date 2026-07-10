@@ -74,8 +74,19 @@
   <h2>Start here</h2>
   <ul>
     <li><a href="#summary">Executive summary</a></li>
+    <li><a href="#rounds">Rounds &amp; progression</a></li>
+    <li><a href="#leaderboard">Leaderboard: score ≈ mu</a></li>
     <li><a href="#rules">The game and the scorer</a></li>
     <li><a href="#principle">The governing principle</a></li>
+  </ul>
+  <h2>Test round · v2</h2>
+  <ul>
+    <li><a href="#v2">The four v2 changes</a></li>
+    <li><a href="#v2results">v2 validation</a></li>
+  </ul>
+  <h2>General round</h2>
+  <ul>
+    <li><a href="#general">Upcoming: the one-shot test</a></li>
   </ul>
   <h2>Part I · Analysis</h2>
   <ul>
@@ -122,37 +133,109 @@
   <h2>What we built, and how much of it you should believe</h2>
 
   <div class="kpi">
-    <div class="box"><div class="v">345.6</div><div class="k">official <code>eval.py</code> score</div></div>
-    <div class="box"><div class="v">4.97</div><div class="k">annualised Sharpe</div></div>
-    <div class="box"><div class="v">353.9</div><div class="k">mean score on untouched holdout</div></div>
-    <div class="box"><div class="v">242.8</div><div class="k">frozen model, never refit</div></div>
+    <div class="box"><div class="v">480.7</div><div class="k">official <code>eval.py</code> score (v2)</div></div>
+    <div class="box"><div class="v">$500.51</div><div class="k">mean daily P&amp;L</div></div>
+    <div class="box"><div class="v">463.6</div><div class="k">mean score on untouched holdout</div></div>
+    <div class="box"><div class="v">355.7</div><div class="k">frozen model, never refit</div></div>
   </div>
 
   <p>The analysis established that this market is a plain, constant-parameter Gaussian simulator with one market
-  factor, two sector factors, and <strong>exactly one exploitable signal</strong>: cross-instrument lead-lag, where
-  instrument <em>i</em>'s move today carries information about instrument <em>j</em>'s move tomorrow. Momentum,
-  trend, drift, own-reversal, volatility clustering and any nonlinear structure were each tested and found absent.</p>
+  factor, two sector factors, and <strong>exactly one primary exploitable signal</strong>: cross-instrument lead-lag,
+  where instrument <em>i</em>'s move today carries information about instrument <em>j</em>'s move tomorrow. Momentum,
+  trend, drift, own-reversal, volatility clustering and any nonlinear structure were each tested and found absent. A
+  second, weaker and <em>orthogonal</em> signal — cross-sectional residual reversal — earns a minority weight.</p>
 
-  <p>The strategy therefore does one thing and does it at scale: every day it rebuilds the lead-lag matrix on
-  market-neutral residuals, drops entries within one standard error as noise, aggregates the surviving structure
-  into a prediction for every instrument, sizes positions inversely to volatility, neutralises net market exposure
-  with ALGO, and deploys capital up to the position limits.</p>
+  <p>The strategy rebuilds the lead-lag matrix daily on market-neutral residuals, drops entries within one standard
+  error as noise, aggregates the surviving structure into a prediction for every instrument, blends in the reversal
+  sleeve at its information-coefficient-optimal weight, applies a hysteresis band so it does not pay commission to
+  flip on a marginal signal, and then takes the <strong>maximum permitted position in every instrument</strong>,
+  neutralising net market exposure with ALGO.</p>
 
   <div class="callout finding">
     <span class="lbl">The number to trust</span>
-    Parameters were chosen using <em>only</em> windows scored on days 125–350. On the holdout window (days
-    350–500), which was never used for any decision, the strategy scores a mean of <strong>353.9</strong>, a
-    minimum of 277.7, and is positive on every window. A model frozen on days 1–250 and traded blind on 251–500,
-    never refit, still scores <strong>242.8 at Sharpe 3.64</strong>. That last figure is the most conservative
-    honest estimate of how the strategy travels to data it has never seen.
+    Parameters were chosen using <em>only</em> windows scored on days 125–350, and every sharp optimum was
+    re-confirmed on three independent evaluation grids. On the holdout (days 350–500), never used for any decision,
+    the strategy scores a mean of <strong>463.6</strong>, a minimum of 371.7, and is positive on every window. A
+    model whose lead-lag matrix is frozen on days 1–250 and traded blind on 251–500, never refit, still scores
+    <strong>355.7 at Sharpe 3.73</strong>. That last figure is the most conservative honest estimate of how the
+    strategy travels to data it has never seen.
   </div>
 
   <div class="callout danger">
-    <span class="lbl">The check that matters most</span>
-    A <strong>placebo</strong> using the identical machinery but a <em>random</em> matrix of matched scale
-    <strong>loses $119 per day</strong>. If there were a look-ahead bug, the placebo would profit too. It does not.
-    The edge is the real lead-lag structure, not a leak.
+    <span class="lbl">The checks that matter most</span>
+    A <strong>placebo</strong> using identical machinery but a <em>random</em> signal <strong>loses $234 per
+    day</strong>. A second placebo, with a <em>random</em> lead-lag matrix but the <em>real</em> reversal sleeve,
+    <strong>loses $33 per day</strong>. If there were a look-ahead bug, both would profit. Neither does. Together
+    they prove the edge is real, and that the lead-lag matrix — not the reversal sleeve — is carrying the strategy.
   </div>
+</section>
+
+<section id="rounds">
+  <div class="step">Structure</div>
+  <h2>Rounds, and the strategy progression</h2>
+
+  <p>The competition releases 2,000 days of simulated data in stages. You always hold an earlier slice and are
+  graded on the <em>next, unseen</em> 250-day window. The repository mirrors that: one folder per round, with the
+  dataset-agnostic tools (backtester, research engines) shared at the root.</p>
+
+  <div class="grid">
+    <div class="callout finding"><span class="lbl">Test round — complete</span>
+      Days 1–500, released 8 July. Two strategy versions built and submitted; v1 scored <strong>469.12</strong>
+      live and ranked 9th. v2 scores <strong>480.65</strong> on the local eval window and has not yet been graded.
+      Everything in Parts I–III of this document was derived here.
+    </div>
+    <div class="callout caveat"><span class="lbl">General round — upcoming</span>
+      Days 501–750, expected 16 July. This is the first genuinely honest out-of-sample test of the whole
+      methodology. <strong>Score the frozen v2 configuration on it exactly once, before touching anything.</strong>
+      Re-tuning first would destroy the only clean number we will ever get.
+    </div>
+  </div>
+
+  <h3>Strategy development progression</h3>
+  <p>Each version exists because the previous one taught us something specific. All three live in
+  <code>strategies/</code>, numbered in development order, and all three still run.</p>
+
+  <table>
+    <tr><th>Version</th><th>File</th><th class="num">eval.py score</th><th class="num">live score</th><th>What changed, and why</th></tr>
+    <tr><td>v0</td><td><code>v0_naive_momentum.py</code></td><td class="num">0.10</td><td class="num">—</td>
+        <td>The organisers' starter: buy yesterday's winners. It is the strawman the competition is built around.</td></tr>
+    <tr><td>v1</td><td><code>v1_leadlag_invvol.py</code></td><td class="num">345.57</td><td class="num"><strong>469.12</strong> (9th)</td>
+        <td><strong>Own momentum is dead</strong> (own-autocorrelation stability +0.072, drift &minus;0.034). If an instrument's own past cannot predict it, look at <em>other instruments' pasts</em>. Aggregated lead-lag on beta-hedged residuals, inverse-vol sized, ALGO hedge.</td></tr>
+    <tr class="best"><td>v2</td><td><code>v2_leadlag_reversal_bangbang.py</code></td><td class="num"><strong>480.65</strong></td><td class="num">not yet scored</td>
+        <td><strong>The leaderboard revealed the objective is dollar profit, not Sharpe.</strong> Added a hysteresis band, switched to bang-bang sizing at the exact cap (fixing a headroom bug), and added the orthogonal reversal sleeve at its IC-optimal weight.</td></tr>
+  </table>
+
+  <p class="muted">The research <em>engines</em> (<code>strategies/engines/</code>) are configurable versions of v1 and
+  v2 exposing every knob we tested, including the ones that failed, so a future session can re-verify a dead end
+  rather than rediscover it.</p>
+</section>
+
+<section id="leaderboard">
+  <div class="step">The turning point</div>
+  <h2>What the leaderboard taught us: score ≈ mu</h2>
+
+  <p>Version 1 of this strategy scored <strong>469.12</strong> live and ranked 9th. Decomposing every team's public
+  numbers through the score function is more informative than the ranking itself.</p>
+
+  <table>
+    <tr><th>Team</th><th class="num">mean P&amp;L</th><th class="num">std dev</th><th class="num">Sharpe</th><th class="num">frac (profit kept)</th><th class="num">score</th></tr>
+    <tr><td>Disciples of Claude</td><td class="num">575.48</td><td class="num">1724.95</td><td class="num">5.28</td><td class="num">0.9653</td><td class="num">555.5</td></tr>
+    <tr><td>I'm going to quit</td><td class="num">566.64</td><td class="num">1619.25</td><td class="num">5.53</td><td class="num">0.9684</td><td class="num">548.7</td></tr>
+    <tr><td>Eric Allen Le</td><td class="num">557.56</td><td class="num">1494.35</td><td class="num">5.90</td><td class="num">0.9721</td><td class="num">542.0</td></tr>
+    <tr class="best"><td><strong>2much alpha (us, v1)</strong></td><td class="num">479.60</td><td class="num">1133.21</td><td class="num"><strong>6.69</strong></td><td class="num"><strong>0.9782</strong></td><td class="num">469.1</td></tr>
+  </table>
+
+  <div class="callout danger">
+    <span class="lbl">We had the best Sharpe on the board. That was the problem.</span>
+    <code>frac = sr²/(sr²+1)</code> is <strong>saturated</strong> above Sharpe ≈ 5. We kept 97.8% of our profit;
+    the leader kept 96.5%. So an extra point of Sharpe is worth <em>less than 2%</em> of score, while an extra
+    dollar of profit is worth ~98 cents. We had optimised risk-adjusted return in a competition that pays for
+    <strong>dollar profit</strong>. Our volatility was the lowest on the board, and that bought us almost nothing.
+  </div>
+
+  <p>Everything in version 2 follows from that single realisation: <strong>score ≈ mu</strong>. That changes the
+  sizing problem from a mean-variance optimisation into a linear programme, and it makes turnover — which costs
+  real dollars — matter far more than volatility, which costs almost none.</p>
 </section>
 
 <!-- ================================================== RULES -->
@@ -798,6 +881,160 @@ hedge = np.clip(-dollars.sum(), -95_000, 95_000)</pre>
   the book carries little net market exposure to begin with. The hedge is insurance, not a position.</p>
 </section>
 
+<!-- ================================================== V2 -->
+<section id="v2">
+  <div class="step">Version 2 · design</div>
+  <h2>The four changes, in order of value</h2>
+
+  <h3>1 · Hysteresis band — the largest single gain</h3>
+  <p>The daily prediction is noisy. Flipping a position's sign on a marginal signal pays commission for nothing and
+  whipsaws you out of positions that were about to work. So: <strong>keep yesterday's sign unless the signal is
+  convincing</strong>, specifically unless <code>|sig| &gt; 0.30 × mean|sig|</code>.</p>
+  <table>
+    <tr><th class="num">band</th><th class="num">0.00</th><th class="num">0.15</th><th class="num">0.20</th><th class="num">0.25</th><th class="num">0.30</th><th class="num">0.35</th><th class="num">0.50</th></tr>
+    <tr><td>Grid A mean</td><td class="num">364.7</td><td class="num">404.4</td><td class="num">447.8</td><td class="num">444.6</td><td class="num"><strong>445.3</strong></td><td class="num">425.5</td><td class="num">395.8</td></tr>
+    <tr><td>Grid B mean</td><td class="num">377.8</td><td class="num">422.6</td><td class="num">462.0</td><td class="num">450.4</td><td class="num">450.7</td><td class="num">431.3</td><td class="num">374.6</td></tr>
+    <tr><td>Grid C mean</td><td class="num">343.4</td><td class="num">388.4</td><td class="num">424.8</td><td class="num">413.1</td><td class="num">416.6</td><td class="num">394.4</td><td class="num">362.5</td></tr>
+  </table>
+  <p>A broad hump on all three grids. We chose 0.30 by the <strong>pre-registered rule</strong>: among configurations
+  within 2% of the best mean, take the one with the best worst window. Dollar volume fell from $129M to $103M, but the
+  gain is far larger than the ~$10/day of commission saved. The band lets winners run, which is the interesting part —
+  see the caveats.</p>
+
+  <h3>2 · Bang-bang sizing</h3>
+  <p>Because <code>score ≈ mu</code>, the sizing problem is: maximise <code>mu = Σ dᵢ·E[rᵢ]</code> subject to
+  <code>|dᵢ| ≤ cap</code>. That is a <em>linear</em> programme, and its solution is bang-bang:</p>
+  <div class="eq">$$d_i \;=\; \text{cap}\cdot\operatorname{sign}(\text{prediction}_i)$$</div>
+  <div class="callout"><span class="lbl">This does not contradict the analysis</span>
+    Section 7 proved that inverse-volatility sizing is <em>mean-variance</em> optimal, given that the ALGO hedge makes
+    the residual covariance near-diagonal. That remains true. But mean-variance optimality answers a
+    <strong>different question</strong> from "maximise dollar profit under a position cap". When the Sharpe tax is
+    saturated, the second question is the one the competition asks. Under bang-bang, volatility and any conviction
+    exponent drop out entirely: <strong>only the sign of the prediction matters.</strong>
+  </div>
+  <p>A side benefit: the bang-bang book carries real net exposure, so the ALGO hedge grows from a mean of $17.8k to as
+  much as $99.6k. ALGO's 10&times; cap, previously 82% idle, is finally doing work.</p>
+
+  <h3>3 · The exact cap — this was a bug in v1</h3>
+  <p>Version 1 set <code>TARGET_FRAC = 0.95</code> "to leave headroom, because <code>eval.py</code> re-clips daily at
+  that day's price". <strong>That reasoning was wrong.</strong> Read the scorer:</p>
+  <pre>curPrices = prcHistSoFar[:, -1]          <span class="c"># the SAME last price our function sizes on</span>
+posLimits = (dlrPosLimit / curPrices).astype(int)
+newPos    = np.clip(newPosOrig, -posLimits, posLimits)</pre>
+  <p>There is no price drift between our decision and the clip. Verified: <strong>0 involuntary trims in 12,750
+  checks</strong> at 99.9% of cap. Taking exactly <code>floor(CAP / price)</code> shares recovered 5% of the book for
+  free, lifting the eval-window score from 354.90 to 373.16.</p>
+
+  <h3>4 · The reversal sleeve, at its theoretically optimal weight</h3>
+  <p>For two <strong>orthogonal</strong> signals, the optimal blend weights each by its information coefficient. The
+  analysis measured lead-lag at IC 0.0484 and reversal at 0.0166 out of sample, with a cross-signal correlation of
+  &minus;0.008 (orthogonal). So:</p>
+  <div class="eq">$$w_{\text{rev}} \;=\; \frac{\mathrm{IC}_{\text{rev}}}{\mathrm{IC}_{\text{ll}}+\mathrm{IC}_{\text{rev}}} \;=\; \frac{0.0166}{0.0484+0.0166} \;=\; 0.257$$</div>
+  <p>The empirical plateau on the selection set runs 0.25 to 0.30. Theory and measurement agree, which is precisely
+  what distinguishes a principled parameter from a fitted one. We use 0.25. Note that in v1's sizing scheme this sleeve
+  looked like a mean-versus-worst-case trade-off and we rejected it; under the corrected sizing it
+  <em>strictly dominates</em>, improving the mean, the worst window and the Sharpe simultaneously.</p>
+
+  <h3>What we tested and killed</h3>
+  <table>
+    <tr><th>Idea</th><th>Rationale</th><th class="num">Result (selection mean)</th></tr>
+    <tr><td>ALGO as an alpha sleeve</td><td>82% of its $100k cap was idle</td><td class="num">Market return is unpredictable: own autocorrelation inside the noise band, ridge on the cross-section gives out-of-sample corr <strong>&minus;0.031</strong>. <span class="pill r">dead</span></td></tr>
+    <tr><td>Multi-lag (add the lag-2 matrix)</td><td>maybe <em>i</em> leads <em>j</em> by two days</td><td class="num">292 &rarr; 275 &rarr; 256 &rarr; 236 as the weight rises. <span class="pill r">hurts</span></td></tr>
+    <tr><td>Soft (James-Stein) shrinkage of L</td><td>the "principled middle ground" this document previously recommended</td><td class="num">231–239 versus the hard threshold's 292. <span class="pill r">hurts</span></td></tr>
+    <tr><td>ALGO as a 51st predictor row</td><td>maybe the market leads the residuals</td><td class="num">349.3 &rarr; 313.9 once the reversal sleeve is on. <span class="pill r">hurts</span></td></tr>
+    <tr><td>Signal EWMA</td><td>smooth the noisy prediction</td><td class="num">448 &rarr; 376 &rarr; 354 on top of hysteresis. <span class="pill r">hurts</span></td></tr>
+    <tr><td>Simply deploying the idle 31% of the book</td><td>68.8% utilisation looked wasteful</td><td class="num">util 0.7&rarr;285, 0.8&rarr;292, 0.9&rarr;263, 1.0&rarr;258. <span class="pill r">hurts</span> The idle capital was idle <em>because there was no conviction there</em>; the marginal dollar bought noise, not profit.</td></tr>
+  </table>
+  <p class="muted">Note the last row carefully. It is the reason we did <em>not</em> simply lever up. Full utilisation
+  only becomes optimal once the reversal sleeve spreads conviction across the whole cross-section.</p>
+</section>
+
+<section id="v2results">
+  <div class="step">Version 2 · validation</div>
+  <h2>Results, and the falsification tests</h2>
+
+  <table>
+    <tr><th>Measure</th><th class="num">v1 (scored 469.12 live)</th><th class="num">v2</th></tr>
+    <tr class="best"><td>Official <code>eval.py</code> score (days 251–500)</td><td class="num">345.57</td><td class="num"><strong>480.65</strong></td></tr>
+    <tr><td>Mean daily P&amp;L</td><td class="num">$359.58</td><td class="num">$500.51</td></tr>
+    <tr><td>Annualised Sharpe</td><td class="num">4.97</td><td class="num">4.92</td></tr>
+    <tr><td>Holdout mean / min (days 350–500)</td><td class="num">353.9 / 277.7</td><td class="num">463.6 / 371.7</td></tr>
+    <tr><td>Frozen model, never refit</td><td class="num">242.8</td><td class="num">355.7</td></tr>
+    <tr><td>Dollar volume</td><td class="num">$111.9M</td><td class="num">$103.2M</td></tr>
+  </table>
+
+  <table>
+    <tr><th>Falsification test</th><th class="num">Result</th><th>What it proves</th></tr>
+    <tr><td>Placebo: random signal, identical machinery</td><td class="num">&minus;234.25</td><td>No look-ahead leak. A fake signal run through the same sizing, hysteresis and hedge <em>loses money</em>.</td></tr>
+    <tr class="best"><td>Placebo: random <code>L</code>, but the <strong>real</strong> reversal sleeve</td><td class="num">&minus;32.83</td><td>The lead-lag matrix — not the reversal sleeve — is carrying the strategy. Reversal only refines the sign near the margin.</td></tr>
+    <tr><td>Frozen fit[1–250] &rarr; trade[251–500]</td><td class="num">355.66, Sharpe 3.73</td><td>The structure is stationary. A model that never sees the trading period still works.</td></tr>
+    <tr><td>Holdout, 3 windows, never used to choose anything</td><td class="num">mean 463.6, min 371.7, 100% positive</td><td>Higher than the selection mean (445.3), which is the opposite of what overfitting produces.</td></tr>
+  </table>
+
+  <table>
+    <tr><th>Constraint</th><th class="num">Limit</th><th class="num">v2</th><th></th></tr>
+    <tr><td>Max non-ALGO dollar position</td><td class="num">$10,000</td><td class="num">$10,000.00 exactly</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>Positions exceeding <code>eval.py</code>'s limits</td><td class="num">0</td><td class="num">0 of 12,750</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>ALGO dollar position</td><td class="num">$100,000</td><td class="num">up to $99,587</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>Total dollar volume</td><td class="num">&ge; $25,000</td><td class="num">$103,244,531</td><td><span class="pill g">pass</span></td></tr>
+    <tr><td>Runtime (250 calls)</td><td class="num">600 s</td><td class="num">0.04 s</td><td><span class="pill g">pass</span></td></tr>
+  </table>
+
+  <div class="callout caveat">
+    <span class="lbl">The claim I am least sure of</span>
+    Hysteresis raised eval-window mean P&amp;L from $397 to $500. That is <em>far</em> more than the ~$10/day of
+    commission it saves, so the mechanism is not cost reduction. The likely explanation is that the combined signal
+    has <strong>multi-day persistence</strong> — probably through the 20-day reversal sleeve — so a sticky position
+    captures more of it than a daily re-optimised one. If that is right, the band is a crude proxy for a proper
+    multi-day-horizon model, and an explicit one would be better. <strong>We have not verified this.</strong> The
+    honest next step is to fit <code>L_k[i,j] = corr(z_i[t], z_j[t+k])</code> for k = 1…5 and look at the decay.
+  </div>
+
+  <div class="callout caveat">
+    <span class="lbl">Two more things worth flagging</span>
+    The selection worst-window <em>regressed</em> (v1 250.3 &rarr; v2 242.8) even as the mean and the holdout improved;
+    that deserves understanding rather than dismissal. And bang-bang sizing deliberately throws away the diversification
+    benefit of inverse-vol sizing, which is a rational trade only while the Sharpe tax stays saturated. If a future
+    round's data yields a materially lower Sharpe, that trade flips and the v1 sizing becomes correct again.
+  </div>
+</section>
+
+<!-- ================================================== GENERAL ROUND -->
+<section id="general">
+  <div class="step">General round</div>
+  <h2>Upcoming: the one-shot honest test</h2>
+
+  <p>Everything measured so far — the stability audits, the selection/holdout split, the frozen model, the placebos
+  — is our best attempt to simulate being scored on data we have never seen. But every one of those numbers is still
+  drawn from the same 500-day sample and the same generator seed. The 16 July data release is the first time we get
+  to find out for real.</p>
+
+  <div class="callout danger">
+    <span class="lbl">The discipline that matters most</span>
+    Score the <strong>frozen v2 configuration</strong> on the new data <strong>exactly once</strong>, and write the
+    number down, <em>before</em> changing a single parameter. That single number is the honest out-of-sample test
+    this entire project has been building toward. If you re-tune first, you consume it and can never get it back.
+  </div>
+
+  <h3>Checklist when the data lands</h3>
+  <ol>
+    <li><code>mkdir general_round</code>; drop in the organisers' new <code>prices.txt</code> and <code>eval.py</code>.</li>
+    <li>Copy <code>strategies/v2_leadlag_reversal_bangbang.py</code> in as <code>general_round/too_much_alpha.py</code>.</li>
+    <li>Run <code>cd general_round &amp;&amp; python eval.py</code> <strong>once</strong>. Record the score, mean P&amp;L and standard deviation.</li>
+    <li>Compare against the conservative expectation from the frozen test (355.7) rather than the eval-window figure (480.65).</li>
+    <li>Seed <code>general_round/analysis.ipynb</code> from the test-round notebook and re-run it. The structural findings should hold if the generator is unchanged: Gaussian returns, no volatility clustering, three factors, volatility stability ≈ 0.98, momentum dead. <strong>If any of those break, the generator changed and the strategy must be rebuilt, not tuned.</strong></li>
+    <li>Only then iterate, using the same selection/holdout protocol on the new days. Record the result as <code>strategies/v3_*.py</code>.</li>
+  </ol>
+
+  <h3>What to attack first, if the frozen number holds</h3>
+  <ol>
+    <li><strong>Understand the hysteresis gain.</strong> It lifted mean P&amp;L by $103/day while saving only ~$10/day of commission. The likely cause is multi-day persistence in the combined signal. Fit <code>L_k[i,j] = corr(z_i[t], z_j[t+k])</code> for k = 1…5 and look at the decay. If the signal really does persist, an explicit multi-day-horizon model should beat a band, and this may be worth more than everything in v2.</li>
+    <li><strong>Replace the band with a transaction-cost-aware optimisation:</strong> trade toward the target only when the expected gain exceeds the commission.</li>
+    <li><strong>Test dropping the hedge.</strong> Under bang-bang, the ALGO hedge reaches $99.6k. Hedging reduces volatility, but volatility is nearly free while the Sharpe tax is saturated. The commission saved is real.</li>
+    <li><strong>Investigate the regressed worst window</strong> (selection min fell 250.3 → 242.8 from v1 to v2 even as the mean and holdout improved).</li>
+  </ol>
+</section>
+
 <!-- ================================================== FILES -->
 <section id="files">
   <div class="step">Reference</div>
@@ -808,24 +1045,42 @@ hedge = np.clip(-dollars.sum(), -95_000, 95_000)</pre>
   together. The backtester and the research engine are dataset-agnostic tools, so they are shared.</p>
 
   <pre>sig-algothon-2026/
-  CLAUDE.md              <span class="c">project-wide guide</span>
-  backtester.py          <span class="c">SHARED · walk-forward backtester</span>
-  strategy.py            <span class="c">SHARED · configurable LeadLag research engine</span>
-  documentation.html     <span class="c">SHARED · this document</span>
+  CLAUDE.md                            <span class="c">project-wide guide</span>
+  backtester.py                        <span class="c">SHARED · walk-forward backtester</span>
+  documentation.html                   <span class="c">SHARED · this document</span>
   requirements-dev.txt
-  test_round/            <span class="c">days 1-500 (released 8 July)</span>
+  strategies/                          <span class="c">SHARED · every version, in development order</span>
+    README.md                          <span class="c">the progression, and why each step happened</span>
+    v0_naive_momentum.py               <span class="c">eval 0.10     · the starter</span>
+    v1_leadlag_invvol.py               <span class="c">eval 345.57   · LIVE 469.12 (9th)</span>
+    v2_leadlag_reversal_bangbang.py    <span class="c">eval 480.65   · current</span>
+    engines/
+      v1_engine.py                     <span class="c">configurable LeadLag</span>
+      v2_engine.py                     <span class="c">configurable Engine</span>
+  test_round/                          <span class="c">days 1-500 (released 8 July)</span>
     prices.txt
-    eval.py              <span class="c">official scorer, never modified</span>
-    too_much_alpha.py    <span class="c">THE SUBMISSION</span>
-    analysis.ipynb       <span class="c">the research notebook</span>
-  general_round/         <span class="c">create when the 16 July data lands</span></pre>
+    eval.py                            <span class="c">official scorer, never modified</span>
+    too_much_alpha.py                  <span class="c">THE LIVE SUBMISSION (copy of newest strategy)</span>
+    analysis.ipynb                     <span class="c">the research notebook</span>
+  general_round/                       <span class="c">create when the 16 July data lands</span></pre>
+
+  <div class="callout"><span class="lbl">Why the submission is duplicated</span>
+    <code>eval.py</code> does <code>from too_much_alpha import getMyPosition</code>, so the live file must sit
+    beside it in the round folder. <code>strategies/</code> is the versioned record. Keep them in sync with
+    <code>diff strategies/v2_leadlag_reversal_bangbang.py test_round/too_much_alpha.py</code>.
+  </div>
 
   <table>
     <tr><th>File</th><th>Role</th><th>Submit?</th></tr>
     <tr><td><code>test_round/too_much_alpha.py</code></td><td><strong>The submission.</strong> Self-contained <code>getMyPosition(prcSoFar)</code>. No imports beyond numpy, no dependency on the other files. Every parameter is a named constant with the measured fact that justifies it in the docstring. <code>eval.py</code> already imports this module, so it runs unmodified. Rename to your team name at submission.</td><td><span class="pill g">yes</span></td></tr>
     <tr><td><code>test_round/analysis.ipynb</code></td><td><strong>The research log.</strong> 90 cells. Builds every concept from first principles with worked examples, explains each code cell line by line, and enforces structural claims with <code>assert</code>. This is the evidence base for every design decision, and half the final grade is the research story.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>backtester.py</code> <span class="pill w">shared</span></td><td><strong>The referee replica.</strong> <code>calc_pl</code> reproduces <code>eval.py</code>'s <code>calcPL</code> exactly (verified to the cent). <code>walk_forward</code> scores a strategy across many windows; <code>summarise</code> returns the score distribution. Also encodes the commission lag, warm-up day, daily re-clip and <code>ddof=0</code> subtleties.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>strategy.py</code> <span class="pill w">shared</span></td><td><strong>The research engine.</strong> A configurable <code>LeadLag</code> class exposing every knob we tested (significance threshold, beta shrinkage, SVD rank, sector neutralisation, smoothing, reversal weight, estimation window, scaling mode). Used only to compare variants; the submission is a frozen, simplified copy of the winner.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategies/README.md</code></td><td>The development progression: what each version changed, and the finding that forced it.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategies/v0_naive_momentum.py</code></td><td>The organisers' starter, recovered from git. Scores 0.10. Kept as a baseline and as the strawman our analysis explains.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategies/v1_leadlag_invvol.py</code></td><td>The version that scored <strong>469.12</strong> live. Its header documents the three mistakes v2 fixed.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategies/v2_leadlag_reversal_bangbang.py</code></td><td>The current strategy. Byte-identical to the live submission.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategies/engines/v1_engine.py</code> <span class="pill w">shared</span></td><td><strong>The v1 research engine.</strong> A configurable <code>LeadLag</code> class exposing the knobs tested in round one (significance threshold, beta shrinkage, SVD rank, sector neutralisation, smoothing, estimation window, scaling mode). Kept so the failed experiments remain reproducible.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategies/engines/v2_engine.py</code> <span class="pill w">shared</span></td><td><strong>The v2 research engine.</strong> A configurable <code>Engine</code> class adding exact-cap (bang-bang) sizing, the hysteresis band, the reversal sleeve weight, exact gross-utilisation control via water-filling, multi-lag and the ALGO-as-predictor variant.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>test_round/eval.py</code></td><td>The organisers' official scorer. Scores the last 250 days of <code>prices.txt</code>. Its import line already points at <code>too_much_alpha</code>, so <code>cd test_round &amp;&amp; python eval.py</code> scores our strategy directly. We never modified it.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><em>the original</em> <code>too_much_alpha.py</code></td><td>The starter example we replaced: naive one-day own-momentum, which scores 0.10. Our analysis proves <em>why</em> it cannot work (own-autocorrelation stability +0.072). It is the strawman the competition is built around, and it remains recoverable from git history.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>test_round/prices.txt</code></td><td>This round's data: 500 days &times; 51 instruments, whitespace-separated, header row of tickers, ALGO first.</td><td><span class="pill r">no</span></td></tr>

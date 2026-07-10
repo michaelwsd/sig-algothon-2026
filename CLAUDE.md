@@ -46,23 +46,42 @@ second half?) before we trust it.
 
 ## Current status (as of the latest session)
 
-**Strategy is built, validated and scoring.** Official `eval.py` on days 251-500:
+**v2 strategy built after leaderboard feedback.** Official `eval.py` on days 251-500:
 
-| Measure | Value |
-|---|---|
-| Score | **345.57** |
-| Annualised Sharpe | 4.97 |
-| Mean daily P&L | $359.58 |
-| Dollar volume | $111.9M |
-| Runtime, 250 calls | 0.05s (limit 600s) |
+| Measure | v1 (scored 469.12 live) | **v2 (current)** |
+|---|---|---|
+| Score | 345.57 | **480.65** |
+| Mean daily P&L | $359.58 | **$500.51** |
+| Annualised Sharpe | 4.97 | 4.92 |
+| Dollar volume | $111.9M | $103.2M |
+| Runtime, 250 calls | 0.05s | 0.04s (limit 600s) |
 
-Honest out-of-sample evidence (see "Validation protocol" below):
+Honest out-of-sample evidence for v2 (see "Validation protocol"):
 
-- **Holdout** (days 350-500, never used to choose anything): mean 353.9, min 277.7, 100% of windows positive.
-- **Frozen** (fit on days 1-250, trade 251-500, never refit): score 242.8, SR 3.64. **Quote this one** as the
-  conservative expectation, not 345.6.
-- **Placebo** (identical machinery, random matrix of matched scale): -119.3, i.e. it *loses money*. This is
-  how we know there is no look-ahead leak.
+- **Holdout** (days 350-500, never used to choose anything): mean 463.6, min 371.7, 100% of windows positive.
+- **Frozen** (lead-lag matrix fit on days 1-250, trade 251-500, never refit): score 355.7, SR 3.73.
+  **Quote this one** as the conservative expectation, not 480.7.
+- **Placebo, random signal + identical machinery:** -234.3. **Placebo, random `L` but the REAL reversal
+  sleeve:** -32.8. Both *lose money* ⇒ no look-ahead leak, and the lead-lag matrix (not reversal) is what
+  carries the strategy.
+
+## THE LEADERBOARD LESSON (read before optimising anything)
+
+v1 scored **469.12** live (mu 479.60, sigma 1133.21), ranking 9th. Decomposing the board:
+
+| Team | mu | sigma | Sharpe | frac | score |
+|---|---|---|---|---|---|
+| Disciples of Claude | 575.48 | 1724.95 | 5.28 | 0.9653 | 555.5 |
+| I'm going to quit | 566.64 | 1619.25 | 5.53 | 0.9684 | 548.7 |
+| **2much alpha (us, v1)** | 479.60 | 1133.21 | **6.69** | **0.9782** | 469.1 |
+
+**We had the highest Sharpe and the lowest volatility on the board.** That is not a virtue here.
+`frac = sr^2/(sr^2+1)` is **saturated** above SR≈5: we keep 97.8% of profit, the leader keeps 96.5%.
+So an extra point of Sharpe is worth <2% of score, while an extra dollar of profit is worth ~98 cents.
+
+> **score ≈ mu. The objective is DOLLAR PROFIT, not risk-adjusted return.**
+
+Everything in v2 follows from that one realisation.
 
 ## How eval.py scores you (the referee)
 
@@ -77,8 +96,10 @@ Honest out-of-sample evidence (see "Validation protocol" below):
   - **Score is ~linear in position size once SR > 3**, because doubling positions doubles both `mu` and
     `sigma`, leaving `frac` unchanged. → **get the signal right, then deploy capital to the caps.** This
     turned out to be the single largest lever we found (see "gross scaling").
-- **Position limit** $10k/instrument, **re-clipped daily at that day's price** even if you don't trade →
-  size to ~95% of cap so rising prices don't force involuntary (commission-charged) trims.
+- **Position limit** $10k/instrument, re-clipped daily. **CORRECTION to an earlier note here:** the clip uses
+  `curPrices = prcHistSoFar[:, -1]`, the *same* last price your function sizes on, so there is **no price
+  drift and no need for headroom.** Take exactly `floor(10_000 / price)` shares. (v1 held back 5% for
+  nothing; verified 0 involuntary trims in 12,750 checks.)
 - **Instrument 0 ("ALGO")** is special: **$100k cap (10x), 0.2bp commission (5x cheaper)**.
 - **Commission** 1bp (0.0001) of dollars traded; instrument 0 is 0.2bp.
   **MEASURED: turnover is NOT a headwind at 1bp.** Position smoothing lost score on every window tested.
@@ -162,7 +183,7 @@ daily edge over many days produces a usable annual Sharpe, and where the `sqrt(2
     is -0.008 ⇒ genuinely **orthogonal**, a legitimate candidate diversifier.
   - Still unresolved whether it earns a slot. See "Open questions".
 
-## The strategy (in `too_much_alpha.py`)
+## The v2 strategy (in `test_round/too_much_alpha.py`)
 
 Each day, causally from history only:
 
@@ -172,34 +193,55 @@ Each day, causally from history only:
 3. standardise residuals -> Z
 4. L = Z[:, :-1] @ Z[:, 1:].T / n ; zero the diagonal
    zero every entry with |L| < 1.0 / sqrt(n)   # sub-one-standard-error entries are noise
-5. sig = L.T @ Z[:, -1] ; sig -= sig.mean()    # aggregate, make dollar-neutral
-6. dollars = sig / resid_vol                   # mean-variance optimal (covariance is ~diagonal)
-   scale so sum|dollars| = 1.2 * 50 * 0.95 * 10_000, then clip each to +/- 9500
-7. ALGO position = -sum(dollars), clipped      # hedge net market exposure
-8. shares = (dollars / price).astype(int)
+5. sig_ll  = L.T @ Z[:, -1]                    # aggregated lead-lag
+   sig_rev = -Z[:, -20:].sum(axis=1)           # orthogonal residual reversal
+   sig = 0.75*norm(sig_ll) + 0.25*norm(sig_rev) ; sig -= sig.mean()
+6. HYSTERESIS: keep yesterday's sign where |sig| < 0.30 * mean|sig|
+7. shares = sign(sig) * (10_000 / price).astype(int)     # BANG-BANG at the exact cap
+8. ALGO position = -sum(dollars), clipped                # hedge net market exposure
 ```
+
+### The four v2 changes, in order of value
+
+1. **Hysteresis band (biggest win).** Only flip a position's sign when the signal is convincing. The daily
+   prediction is noisy; flipping on a marginal signal pays commission for nothing and whipsaws out of
+   positions that were about to work. `band` sweep (mean selection score, 3 grids): 0→365, 0.15→404,
+   **0.20→448, 0.25→445, 0.30→445**, 0.35→426, 0.50→396. Broad hump; we chose 0.30 by the pre-registered
+   rule (best worst-window among configs within 2% of the best mean). Dollar volume fell $129M → $103M, but
+   the gain is far larger than the commission saved: it lets winners run.
+2. **Bang-bang sizing.** Because `score ≈ mu`, maximising `mu = sum d_i E[r_i]` s.t. `|d_i| <= cap` is a
+   *linear programme*, whose solution is `d_i = cap * sign(pred_i)`. Inverse-vol sizing is mean-variance
+   optimal — a **different objective**. Under bang-bang, `sd` and any conviction exponent drop out entirely;
+   only the SIGN matters. Bonus: net exposure grows, so ALGO's $100k cap is finally used (up to $99.6k).
+3. **Exact cap (this was a BUG in v1).** v1 used `TARGET_FRAC = 0.95` "for headroom against the daily
+   re-clip". **There is no drift to defend against:** `eval.py` builds `posLimits` from
+   `curPrices = prcHistSoFar[:, -1]`, the *same* last price we size on. Verified 0 involuntary trims in
+   12,750 checks. Taking exactly `floor(CAP/price)` shares recovered 5% of the book for free.
+4. **Reversal sleeve at the IC-optimal weight.** For *orthogonal* signals the optimal blend weights by IC:
+   `w_rev = IC_rev/(IC_ll + IC_rev) = 0.0166/(0.0484+0.0166) = 0.257`. We use 0.25. Theory and the empirical
+   plateau (0.25-0.30) agree, which is what makes it principled rather than fitted. Selection mean rose
+   292→319 at `rev_w=0.10` while the *worst* window also improved, i.e. it strictly dominates.
 
 **Why beta is fully shrunk to 1.0 (we estimate no betas at all).** Betas average 0.98 but their split-half
 stability is only 0.780, versus volatility's 0.982, because beta is a ratio of two estimated quantities and
 inherits noise from both. Shrinking `beta_i -> beta_i + k*(1 - beta_i)` improved the score monotonically all
-the way to `k = 1.0`, i.e. deleting the parameter entirely. Fewer estimated parameters, strictly better
-results. This was counter-intuitive and is one of the two biggest wins.
+the way to `k = 1.0`, i.e. deleting the parameter entirely. Fewer estimated parameters, strictly better.
 
-**Why gross scaling (the other big win).** Scaling so the *largest* position hits the cap leaves most of the
-book tiny and wastes capital. Scaling *gross exposure* past the caps and clipping per name deploys far more.
-Since score is ~linear in size, this roughly tripled the score. The `gross_frac` sweep is a broad hump:
-0.6→232, 1.0→280, **1.2→293**, 1.5→296, 2.0→285, 3.0→264. We chose 1.2, on the plateau, maximising the
-*worst* window rather than the mean.
+**ALGO cannot carry alpha.** Its own autocorrelation is inside the noise band at every lag, and a ridge model
+predicting `r_ALGO[t+1]` from today's 50 residuals scores an out-of-sample correlation of **-0.031** (and
+-0.070 on the reverse split). The market return is unpredictable, so ALGO's $100k cap can only ever hedge.
 
 ## Validation protocol (do not violate this)
 
-- **SELECTION set:** windows whose *scored* days lie in `[125, 350)`. Every parameter choice was made here.
-- **HOLDOUT set:** windows whose scored days lie in `[350, 500)`. Touched exactly once, after the config was
-  frozen and written down.
-- The holdout scored **higher** than the selection set (353.9 vs 293.2). That is the opposite of what
-  overfitting produces, and is the strongest single piece of evidence we have.
-- Also run, on the final config: **frozen fit** (242.8), **placebo** (-119.3), and a **plateau check** (any
-  sharp optimum must be re-confirmed under several different evaluation grids).
+- **SELECTION set:** windows whose *scored* days lie in `[125, 350)`. Every parameter choice was made here,
+  and every sharp optimum was re-confirmed on **three different evaluation grids** (test_len 100/125/75).
+- **HOLDOUT set:** windows whose scored days lie in `[350, 500)`.
+- **Pre-registered decision rule:** among configs within 2% of the best selection mean, take the one with the
+  best *worst* window. Write the config down before running the holdout.
+- v2 holdout: mean **463.6**, min 371.7, 100% positive — again *higher* than selection (445.3). The opposite
+  of what overfitting produces.
+- Also run, on the final config: **frozen fit** (355.7), and **two placebos** (random signal: -234.3; random
+  `L` with the real reversal sleeve: -32.8). Both must lose money.
 - Prefer flat parameter plateaus over sharp peaks. Treat the Jul 16 data drop as a **one-shot** honest
   out-of-sample test — validate on it, don't re-tune on it until validated.
 
@@ -212,10 +254,15 @@ Since score is ~linear in size, this roughly tripled the score. The `gross_frac`
 | Position smoothing | cut turnover/commission | 1.0→293, 0.8→269, 0.6→223. **Hurts.** At 1bp, commission isn't the bottleneck. |
 | Rolling estimation window | adapt to changing structure | expanding→296, 250d→282, 125d→240. **Hurts.** Constant-parameter generator ⇒ more data is strictly better. |
 | Keep only "significant" pairs (2.5 s.e.) | trade the strong pairs | ~45 vs ~140 for keep-all. **Hurts badly.** Only 1 pair survives FDR; cherry-picking = one bet. |
+| Multi-lag (add lag-2 matrix) | if i leads j by 2 days we're missing it | lag2_w 0→292, 0.15→275, 0.3→256, 0.5→236. **Hurts.** The structure is lag-1 only. |
+| ALGO as a 51st predictor row | maybe the market leads residuals | 293.7 alone (noise-level gain), and **313.9 vs 349.3 once the reversal sleeve is on. Hurts.** |
+| Soft / James-Stein shrinkage of `L` | principled middle ground vs hard cut | soft-only λ=0.5→231, λ=1→236; hard+soft→239. **Hurts** vs hard threshold's 292. (`CLAUDE.md` used to list this as the top next step. It is now tested and dead. NB a *global multiplicative* shrink is a **no-op** once gross is renormalised — shrinkage must be nonlinear.) |
+| Signal EWMA (blend with yesterday's signal) | smooth the noisy prediction | on top of hysteresis: 448→376→354→338 as ewma goes 0→0.1→0.2→0.3. **Hurts.** Hysteresis already does this, better. |
+| Raising gross utilisation (without reversal) | 31% of the book was idle | util 0.7→285, 0.8→292, 0.9→263, 1.0→258. **Hurts.** The idle capital was idle *because there was no conviction there*; the marginal dollar bought noise. (With the reversal sleeve on, conviction spreads and full utilisation becomes optimal.) |
 
 Parameter sensitivities that DO matter: `signif_se` (1.0 is a sharp-ish hump, but it is the canonical
-one-standard-error cut and survived three different evaluation grids), `gross_frac` (broad hump), and
-`beta_shrink` (monotone to 1.0).
+one-standard-error cut and survived three different evaluation grids), `band` (broad hump 0.20-0.30),
+`rev_w` (plateau 0.25-0.30, and 0.257 is the theory value), and `beta_shrink` (monotone to 1.0).
 
 ## Repo layout (one folder per round; shared core at the root)
 
@@ -223,16 +270,33 @@ one-standard-error cut and survived three different evaluation grids), `gross_fr
 sig-algothon-2026/
   CLAUDE.md              this file — project-wide guide
   backtester.py          SHARED. walk-forward backtester, reused by every round
-  strategy.py            SHARED. configurable LeadLag research engine
   documentation.html     SHARED. cumulative write-up across rounds
   requirements-dev.txt   exact grading-sandbox package set
+  strategies/            SHARED. every strategy version, in development order
+    README.md            the progression, and why each step happened
+    v0_naive_momentum.py             organisers' starter.       eval 0.10
+    v1_leadlag_invvol.py             lead-lag + inverse-vol.    eval 345.57, LIVE 469.12 (9th)
+    v2_leadlag_reversal_bangbang.py  + reversal + bang-bang.    eval 480.65   <- current
+    engines/
+      v1_engine.py       configurable LeadLag (beta_shrink, sector_k, rank, est_window, scale_mode)
+      v2_engine.py       configurable Engine  (exact_cap, band, rev_w, util, lag2_w, algo_lead, shrink)
   test_round/            days 1-500 (released Jul 8)
     prices.txt           500 days x 51, header row of fake tickers, ALGO first
     eval.py              official scorer for this round. Never modified
-    too_much_alpha.py    THE SUBMISSION for this round
+    too_much_alpha.py    THE LIVE SUBMISSION — byte-identical copy of the newest strategy
     analysis.ipynb       the research notebook for this round's data
   general_round/         create when the Jul 16 data lands (see below)
 ```
+
+**Why the submission is duplicated.** `eval.py` does `from too_much_alpha import getMyPosition`, so the live
+file must sit next to it in the round folder. `strategies/` is the versioned record. Keep them in sync:
+
+```bash
+diff strategies/v2_leadlag_reversal_bangbang.py test_round/too_much_alpha.py && echo "in sync"
+```
+
+The **engines** are research tools, not submissions. They expose every knob we tested — *including the ones
+that failed* — so a future session can re-verify a dead end rather than rediscover it.
 
 **Why this split.** `prices.txt`, `eval.py`, the submission and the analysis notebook are all *about one
 dataset*, so they live together. `backtester.py` and `strategy.py` are dataset-agnostic tools, so they sit at
@@ -281,8 +345,12 @@ print(summarise(walk_forward(prc, strat.getMyPosition, **HOLD)))
 # -> {'n':3, 'score_mean':353.9, 'score_min':277.7, 'pct_positive':100.0, ...}
 
 # 3. Compare variants with the research engine instead of the frozen submission
-from strategy import LeadLag
-LeadLag(signif_se=1.0, beta_shrink=1.0, scale_mode="gross", gross_frac=1.2)
+from strategies.engines.v2_engine import Engine
+Engine(signif_se=1.0, rev_w=0.25, exact_cap=True, band=0.30)   # the v2 config
+
+# NOTE: v2 keeps hysteresis STATE between days. walk_forward calls .reset() on any
+# object that has it, so pass the Engine object (not a bare function) or wrap the
+# submission module:  class A: reset=lambda s: tma.reset(); __call__=lambda s,p: tma.getMyPosition(p)
 ```
 
 To run the official scorer: `cd test_round && python eval.py`.
@@ -297,16 +365,20 @@ position smoothing), `walk_forward` calls it before each window.
 
 ## Open questions / next steps (in order of expected value)
 
-1. **Jul 16 drop:** score the primary config AND the `+reversal` variant once each, without re-tuning, then
-   pick. On our holdout the reversal variant scored 369.7 mean / 308.2 min vs the primary's 353.9 / 277.7 —
-   it won on both — but we did **not** switch, because choosing it after seeing the holdout would consume the
-   holdout and invalidate the number that makes it look good. The drop settles it cleanly.
-2. **Shrink `L` smoothly instead of thresholding it.** We tried a hard 1-s.e. cut and a hard SVD truncation.
-   A James-Stein style entrywise shrinkage toward zero is the principled middle ground we never tested.
-3. **Multi-lag structure.** We only ever tested lag 1. If `i` leads `j` by two days, we're leaving it on the
-   table.
-4. **Cost of the daily re-clip.** Quantify how much score the involuntary trims cost, and whether a lower
-   `TARGET_FRAC` pays for itself.
+1. **Understand WHY hysteresis pays so much.** It raised eval-window mu from $397 to $500 — far more than the
+   $10/day of commission it saves. Hypothesis: the combined signal has multi-day persistence (probably via the
+   20-day reversal sleeve), so a sticky position captures more of it than a daily re-optimised one. If true,
+   the right model is an explicit multi-day-horizon prediction, not a band. **Test:** fit
+   `L_k[i,j] = corr(z_i[t], z_j[t+k])` for k = 1..5 and look at the decay.
+2. **The band is a crude proxy for a holding-period model.** A proper approach: predict the k-day-ahead
+   cumulative residual return and hold accordingly, or solve a small transaction-cost-aware optimisation
+   (trade toward the target only when the expected gain exceeds the commission).
+3. **We may be over-hedging.** With bang-bang, ALGO's hedge reaches $99.6k. Hedging reduces sigma, but sigma
+   is nearly free (frac saturated). Test `hedge=False` and partial hedges: the score may not care, and the
+   commission saved is real.
+4. **Jul 16 drop:** score v2 once, without re-tuning, and record it before touching anything.
+5. **Selection worst-window regressed** (v1 250.3 → v2 242.8) even as the mean and the holdout improved.
+   Worth understanding rather than ignoring.
 
 ## Past years (context)
 
