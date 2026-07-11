@@ -46,9 +46,11 @@ second half?) before we trust it.
 
 ## Current status (as of the latest session)
 
-**v2 strategy built after leaderboard feedback.** Official `eval.py` on days 251-500:
+**LIVE SUBMISSION = v2** (`too_much_alpha.py`). It has the best live score, 526.61. v3 was tried and
+reverted (it beat v2 offline but lost live — see "v3 tried and reverted" below). Official `eval.py` on
+days 251-500:
 
-| Measure | v1 (scored 469.12 live) | **v2 (current)** |
+| Measure | v1 (scored 469.12 live) | **v2 (LIVE, 526.61)** |
 |---|---|---|
 | Score | 345.57 | **480.65** |
 | Mean daily P&L | $359.58 | **$500.51** |
@@ -64,6 +66,55 @@ Honest out-of-sample evidence for v2 (see "Validation protocol"):
 - **Placebo, random signal + identical machinery:** -234.3. **Placebo, random `L` but the REAL reversal
   sleeve:** -32.8. Both *lose money* ⇒ no look-ahead leak, and the lead-lag matrix (not reversal) is what
   carries the strategy.
+
+## Leaderboard history (test round, days 501-750 hidden) — LIVE scores
+
+| Our version | live score | mu | sigma | note |
+|---|---|---|---|---|
+| v1 lead-lag + inverse-vol | 469.12 | 479.60 | 1133 | highest Sharpe on the board — a mistake |
+| **v2 + reversal + bang-bang** | **526.61** | 542.56 | 1493 | **BEST — this is LIVE** |
+| v3 dollar-weighted ridge | 503.38 | 519.99 | 1493 | won every offline test, **LOST live**. Reverted. See below. |
+
+**The v2 leaderboard read (leader "Ivan & Haowen" scored 810.91, mu 823, sigma 1608, Sharpe 8.09).**
+The leader makes **52% more dollar profit than us at HIGHER Sharpe and similar vol** ⇒ they are not
+leveraging, they have a materially better predictor (higher directional hit rate). `frac` is still ~0.98 for
+everyone, so **score ≈ mu still holds**; the hunt is purely for more mean P&L.
+
+**The hit-rate ceiling (why small edges matter enormously).** Under bang-bang everyone sits at the caps, so
+mu is set by directional sign accuracy weighted by realised move size. Our hit rate on the 50 instruments is
+**52.1%**. Perfect foresight would earn **$9,683/day**; we earn $543, i.e. **5.4% of the ceiling**. The leader
+needs only ~**53.2%** accuracy to earn their 823. So ~1 percentage point of hit rate ≈ 50% more score. The
+lever is a better SIGN predictor, and it must be judged by SCORE, not by IC (see the v3 dead-ends below).
+
+## v3 TRIED AND REVERTED — the single most important lesson
+
+**v3 (dollar-weighted ridge) beat v2 on EVERY offline test, then scored WORSE live.**
+Offline (all drawn from our days 1-500): frozen 389.4 vs v2 355.7; dense holdout 484.2 vs 460.8;
+eval.py window 495.26 vs 480.65. Live on the hidden days 501-750: **v3 = 503.38, v2 = 526.61.**
+So we **reverted to v2** and deleted the v3 files.
+
+Why it matters: our whole validation protocol (selection/holdout/frozen/placebo) is drawn from the SAME
+500-day sample. It is our best available proxy for out-of-sample, but it is NOT the real thing. The Jul 16
+live result is the first truly independent test, and it disagreed with the offline holdout. **Do not trust a
+~5-10% offline improvement enough to ship it over a strategy with a proven LIVE score.** Only change the live
+submission for a large, robust offline gain, or after a new live/data-drop confirms it.
+
+What v3 changed (recorded so the idea isn't rebuilt from scratch): a ridge predictor
+`B = (X'X/n + lam I)^-1 (X'Y/n)` with a RAW (dollar-weighted) target instead of the standardised one, to make
+the estimator chase dollar profit rather than IC. Good theory, better offline, worse live. The dollar-weighting
+insight is still probably correct in principle; the specific parameterisation did not generalise.
+
+### Directions tried while chasing the leader (810), and their verdicts
+- price-level mean reversion: **dead** (AR(1) 0.977 ≈ random walk, speed stability 0.083, IC ~0.018 t<2).
+- factor-level lead-lag (do the 3 PCs lead each other): **weak** (OOS IC 0.013). Lead-lag is idiosyncratic.
+- ridge / dollar-weighted ridge (v3): better offline, **worse live**. Reverted (see above).
+- sector-neutralise then lead-lag: IC 0.047 but SCORE 445→272. **dead** (IC-vs-score gap).
+- dual reversal horizon (20+60): great on selection, **overfit** on holdout. **dead**.
+- **pairs trading / cointegration:** in-sample cointegration is real (27/30 shortest-half-life pairs cointegrate
+  at 5%, half-lives 3-5d) but only ~46% stable OOS (half-life corr across halves 0.245). Scored: pairs-only eval
+  93-242 vs 495 (selection worst-window went negative); blending in strictly HURTS. **Dead.** The cross-sectional
+  reversal sleeve is already the robust version of the same mean-reversion — reverting against the whole basket
+  beats trading fragile individual partners.
 
 ## THE LEADERBOARD LESSON (read before optimising anything)
 
@@ -259,6 +310,9 @@ predicting `r_ALGO[t+1]` from today's 50 residuals scores an out-of-sample corre
 | Soft / James-Stein shrinkage of `L` | principled middle ground vs hard cut | soft-only λ=0.5→231, λ=1→236; hard+soft→239. **Hurts** vs hard threshold's 292. (`CLAUDE.md` used to list this as the top next step. It is now tested and dead. NB a *global multiplicative* shrink is a **no-op** once gross is renormalised — shrinkage must be nonlinear.) |
 | Signal EWMA (blend with yesterday's signal) | smooth the noisy prediction | on top of hysteresis: 448→376→354→338 as ewma goes 0→0.1→0.2→0.3. **Hurts.** Hysteresis already does this, better. |
 | Raising gross utilisation (without reversal) | 31% of the book was idle | util 0.7→285, 0.8→292, 0.9→263, 1.0→258. **Hurts.** The idle capital was idle *because there was no conviction there*; the marginal dollar bought noise. (With the reversal sleeve on, conviction spreads and full utilisation becomes optimal.) |
+| Multi-horizon lead-lag `L_k`, k=2..8 | maybe the signal persists multi-day (the hysteresis-gain hypothesis) | **The lead-lag signal is lag-1 ONLY.** OOS IC: k=1 → 0.044 (t 4.9), k≥2 all inside the noise band (t<2). Holding longer dilutes: cumulative-k-day IC decays 0.040→0.017. So hysteresis does NOT work via horizon persistence, and a multi-day predictor is dead. |
+| Sector-neutralise residuals before lead-lag | raises the predictor's OOS IC (0.039→0.047, t 5.6) | **IC up, SCORE DOWN (445→272).** The single most important negative result of the v2→v3 round: under bang-bang, dollar profit is sign-accuracy weighted by realised move size, NOT cross-sectional IC. **Never optimise IC once the Sharpe tax is saturated.** |
+| Second (long) reversal horizon, 20d + 60d | reversal 60d has higher OOS IC (0.030) than 20d (0.025) | **OVERFIT.** Selection mean 486.6 (vs v2 445.3), worst window 342 — but HOLDOUT 369.9 (vs v2 463.6) and eval 454 (vs 480.65). A selection-set artefact. The selection surface was bumpy (spike at lb2=80), not a plateau — the warning sign. the deleted engines documented these; verdicts kept in this table. |
 
 Parameter sensitivities that DO matter: `signif_se` (1.0 is a sharp-ish hump, but it is the canonical
 one-standard-error cut and survived three different evaluation grids), `band` (broad hump 0.20-0.30),
@@ -275,11 +329,13 @@ sig-algothon-2026/
   strategies/            SHARED. every strategy version, in development order
     README.md            the progression, and why each step happened
     v0_naive_momentum.py             organisers' starter.       eval 0.10
-    v1_leadlag_invvol.py             lead-lag + inverse-vol.    eval 345.57, LIVE 469.12 (9th)
-    v2_leadlag_reversal_bangbang.py  + reversal + bang-bang.    eval 480.65   <- current
+    v1_leadlag_invvol.py             lead-lag + inverse-vol.    eval 345.57, LIVE 469.12
+    v2_leadlag_reversal_bangbang.py  + reversal + bang-bang.    eval 480.65, LIVE 526.61  <- LIVE (best)
     engines/
-      v1_engine.py       configurable LeadLag (beta_shrink, sector_k, rank, est_window, scale_mode)
-      v2_engine.py       configurable Engine  (exact_cap, band, rev_w, util, lag2_w, algo_lead, shrink)
+      leadlag_invvol_engine.py              v1 research engine (beta_shrink, sector_k, rank, est_window, scale_mode)
+      leadlag_reversal_bangbang_engine.py   v2 research engine (exact_cap, band, rev_w, util, lag2_w, algo_lead)
+    (v3 dollar-ridge, pairs, sector-neut and dual-reversal engines were tried and DELETED;
+     their verdicts live in the "Things that FAILED" table so they aren't rebuilt.)
   test_round/            days 1-500 (released Jul 8)
     prices.txt           500 days x 51, header row of fake tickers, ALGO first
     eval.py              official scorer for this round. Never modified
@@ -299,20 +355,19 @@ The **engines** are research tools, not submissions. They expose every knob we t
 that failed* — so a future session can re-verify a dead end rather than rediscover it.
 
 **Why this split.** `prices.txt`, `eval.py`, the submission and the analysis notebook are all *about one
-dataset*, so they live together. `backtester.py` and `strategy.py` are dataset-agnostic tools, so they sit at
-the root and are shared. Nothing needed a code change to move: `eval.py` reads `./prices.txt` and imports
+dataset*, so they live together. `backtester.py` and the `strategies/` engines are dataset-agnostic tools, so
+they are shared. Nothing needed a code change to move: `eval.py` reads `./prices.txt` and imports
 `too_much_alpha` from its own directory, and the notebook reads `prices.txt` relatively.
 
-- `too_much_alpha.py` — **the submission.** Self-contained `getMyPosition(prcSoFar)`; numpy only; no
-  dependency on the other files. `eval.py` already imports it, so `cd test_round && python eval.py` scores us
-  directly. Rename to `<TeamName>.py` only at submission. (This file *used to be* the naive-momentum starter;
-  that version is still in git history.)
+- `test_round/too_much_alpha.py` — **the live submission** (a byte-identical copy of
+  `strategies/v2_leadlag_reversal_bangbang.py`); numpy only; no dependency on the other files. `eval.py` already
+  imports it, so `cd test_round && python eval.py` scores us directly. Rename to `<TeamName>.py` at submission.
 - `backtester.py` — `calc_pl` reproduces `eval.py` to the cent (verified on the old starter: mu 10.3597,
   std 1640.1991, dvol 5,919,621, score 0.1023). `walk_forward` + `summarise` give a score *distribution*
   across many unseen windows. Don't submit.
-- `strategy.py` — configurable `LeadLag` engine exposing every knob we tested. Research only. Don't submit.
-- `analysis.ipynb` — 90 cells. Builds every concept from first principles with worked examples, explains each
-  code cell line by line, and enforces structural claims with `assert`. Evidence base; half the final grade.
+- `strategies/` — every version in development order, plus configurable research `engines/`. Research only.
+- `test_round/analysis.ipynb` — 90 cells. Builds every concept from first principles with worked examples,
+  explains each code cell line by line, and enforces structural claims with `assert`. Half the final grade.
 
 ### Starting a new round
 
@@ -345,7 +400,7 @@ print(summarise(walk_forward(prc, strat.getMyPosition, **HOLD)))
 # -> {'n':3, 'score_mean':353.9, 'score_min':277.7, 'pct_positive':100.0, ...}
 
 # 3. Compare variants with the research engine instead of the frozen submission
-from strategies.engines.v2_engine import Engine
+from strategies.engines.leadlag_reversal_bangbang_engine import Engine
 Engine(signif_se=1.0, rev_w=0.25, exact_cap=True, band=0.30)   # the v2 config
 
 # NOTE: v2 keeps hysteresis STATE between days. walk_forward calls .reset() on any

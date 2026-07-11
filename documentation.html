@@ -201,13 +201,24 @@
         <td>The organisers' starter: buy yesterday's winners. It is the strawman the competition is built around.</td></tr>
     <tr><td>v1</td><td><code>v1_leadlag_invvol.py</code></td><td class="num">345.57</td><td class="num"><strong>469.12</strong> (9th)</td>
         <td><strong>Own momentum is dead</strong> (own-autocorrelation stability +0.072, drift &minus;0.034). If an instrument's own past cannot predict it, look at <em>other instruments' pasts</em>. Aggregated lead-lag on beta-hedged residuals, inverse-vol sized, ALGO hedge.</td></tr>
-    <tr class="best"><td>v2</td><td><code>v2_leadlag_reversal_bangbang.py</code></td><td class="num"><strong>480.65</strong></td><td class="num">not yet scored</td>
+    <tr class="best"><td>v2</td><td><code>v2_leadlag_reversal_bangbang.py</code></td><td class="num"><strong>480.65</strong></td><td class="num"><strong>526.61</strong> (best, LIVE)</td>
         <td><strong>The leaderboard revealed the objective is dollar profit, not Sharpe.</strong> Added a hysteresis band, switched to bang-bang sizing at the exact cap (fixing a headroom bug), and added the orthogonal reversal sleeve at its IC-optimal weight.</td></tr>
+    <tr><td>v3</td><td><em>deleted</em></td><td class="num">495.26</td><td class="num">503.38 (worse)</td>
+        <td><strong>A validated offline gain that failed live.</strong> Dollar-weighted ridge estimator. Beat v2 on every offline test but scored lower on the truly-hidden days. Reverted and removed. See the caveat below.</td></tr>
   </table>
 
-  <p class="muted">The research <em>engines</em> (<code>strategies/engines/</code>) are configurable versions of v1 and
-  v2 exposing every knob we tested, including the ones that failed, so a future session can re-verify a dead end
-  rather than rediscover it.</p>
+  <div class="callout danger"><span class="lbl">The single most important lesson</span>
+    v3 won <em>every</em> offline test — frozen (389.4 vs 355.7), dense holdout (484.2 vs 460.8), eval window
+    (495.3 vs 480.65) — and then scored <strong>worse live: 503.38 against v2's 526.61</strong>. Our entire
+    validation suite is drawn from the same 500 days we hold, so it is a <em>proxy</em> for out-of-sample, not the
+    real thing. The first genuinely independent test (the hidden days 501-750) disagreed with it. <strong>A ~5-10%
+    offline improvement is not enough to ship over a strategy with a proven live score.</strong> v2 is the live
+    submission; v3 was reverted.
+  </div>
+
+  <p class="muted">The research <em>engines</em> (<code>strategies/engines/</code>) are configurable versions of v1
+  and v2. The v3-round experiments (dollar-ridge, pairs, sector-neutralisation, dual-reversal) were tried, failed,
+  and removed; their verdicts survive in the failure record so they are not rebuilt.</p>
 </section>
 
 <section id="leaderboard">
@@ -1052,11 +1063,11 @@ newPos    = np.clip(newPosOrig, -posLimits, posLimits)</pre>
   strategies/                          <span class="c">SHARED · every version, in development order</span>
     README.md                          <span class="c">the progression, and why each step happened</span>
     v0_naive_momentum.py               <span class="c">eval 0.10     · the starter</span>
-    v1_leadlag_invvol.py               <span class="c">eval 345.57   · LIVE 469.12 (9th)</span>
-    v2_leadlag_reversal_bangbang.py    <span class="c">eval 480.65   · current</span>
+    v1_leadlag_invvol.py               <span class="c">eval 345.57   · LIVE 469.12</span>
+    v2_leadlag_reversal_bangbang.py    <span class="c">eval 480.65   · LIVE 526.61  <- LIVE (best)</span>
     engines/
-      v1_engine.py                     <span class="c">configurable LeadLag</span>
-      v2_engine.py                     <span class="c">configurable Engine</span>
+      leadlag_invvol_engine.py             <span class="c">v1 research engine</span>
+      leadlag_reversal_bangbang_engine.py  <span class="c">v2 research engine</span>
   test_round/                          <span class="c">days 1-500 (released 8 July)</span>
     prices.txt
     eval.py                            <span class="c">official scorer, never modified</span>
@@ -1079,8 +1090,7 @@ newPos    = np.clip(newPosOrig, -posLimits, posLimits)</pre>
     <tr><td><code>strategies/v0_naive_momentum.py</code></td><td>The organisers' starter, recovered from git. Scores 0.10. Kept as a baseline and as the strawman our analysis explains.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>strategies/v1_leadlag_invvol.py</code></td><td>The version that scored <strong>469.12</strong> live. Its header documents the three mistakes v2 fixed.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>strategies/v2_leadlag_reversal_bangbang.py</code></td><td>The current strategy. Byte-identical to the live submission.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>strategies/engines/v1_engine.py</code> <span class="pill w">shared</span></td><td><strong>The v1 research engine.</strong> A configurable <code>LeadLag</code> class exposing the knobs tested in round one (significance threshold, beta shrinkage, SVD rank, sector neutralisation, smoothing, estimation window, scaling mode). Kept so the failed experiments remain reproducible.</td><td><span class="pill r">no</span></td></tr>
-    <tr><td><code>strategies/engines/v2_engine.py</code> <span class="pill w">shared</span></td><td><strong>The v2 research engine.</strong> A configurable <code>Engine</code> class adding exact-cap (bang-bang) sizing, the hysteresis band, the reversal sleeve weight, exact gross-utilisation control via water-filling, multi-lag and the ALGO-as-predictor variant.</td><td><span class="pill r">no</span></td></tr>
+    <tr><td><code>strategies/engines/*.py</code> <span class="pill w">shared</span></td><td><strong>The research engines</strong>: <code>leadlag_invvol_engine.py</code> (v1) and <code>leadlag_reversal_bangbang_engine.py</code> (v2), configurable versions of the two live strategies exposing every knob tested. The v3-round experiment engines were removed in the cleanup; their verdicts are kept in the failure record.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>test_round/eval.py</code></td><td>The organisers' official scorer. Scores the last 250 days of <code>prices.txt</code>. Its import line already points at <code>too_much_alpha</code>, so <code>cd test_round &amp;&amp; python eval.py</code> scores our strategy directly. We never modified it.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><em>the original</em> <code>too_much_alpha.py</code></td><td>The starter example we replaced: naive one-day own-momentum, which scores 0.10. Our analysis proves <em>why</em> it cannot work (own-autocorrelation stability +0.072). It is the strawman the competition is built around, and it remains recoverable from git history.</td><td><span class="pill r">no</span></td></tr>
     <tr><td><code>test_round/prices.txt</code></td><td>This round's data: 500 days &times; 51 instruments, whitespace-separated, header row of tickers, ALGO first.</td><td><span class="pill r">no</span></td></tr>

@@ -8,8 +8,9 @@ that module by name, so it must live in the round folder).
 | Version | File | eval.py score (days 251-500) | Live leaderboard | What changed |
 |---|---|---|---|---|
 | v0 | `v0_naive_momentum.py` | 0.10 | — | The organisers' starter. Buys yesterday's winners. |
-| v1 | `v1_leadlag_invvol.py` | 345.57 | **469.12** (9th) | Aggregated lead-lag on beta-hedged residuals, inverse-vol sized, ALGO hedge. |
-| v2 | `v2_leadlag_reversal_bangbang.py` | **480.65** | not yet scored | Hysteresis band, bang-bang sizing at the exact cap, orthogonal reversal sleeve. |
+| v1 | `v1_leadlag_invvol.py` | 345.57 | 469.12 | Aggregated lead-lag on beta-hedged residuals, inverse-vol sized, ALGO hedge. |
+| **v2** | **`v2_leadlag_reversal_bangbang.py`** | 480.65 | **526.61 (best)** | **LIVE.** Hysteresis band, bang-bang sizing at the exact cap, orthogonal reversal sleeve. |
+| v3 | *(deleted)* | 495.26 | **503.38 — worse** | Dollar-weighted ridge. Beat v2 on every offline test, **lost live**. Reverted and removed. |
 
 ## The progression, and why each step happened
 
@@ -43,25 +44,39 @@ Everything in v2 follows:
 4. **Reversal sleeve at weight 0.25**, which is the IC-optimal blend `IC_rev/(IC_ll + IC_rev) = 0.257` for
    orthogonal signals. Theory and the empirical plateau agree.
 
+**v2 → v3: a validated offline gain that FAILED live (the key lesson).**
+v2 scored 526.61 live. Chasing the leader, v3 changed the estimator to target dollars rather than IC: a ridge
+predictor `B = (X'X/n + lam I)^-1 (X'Y/n)` with a *raw* (dollar-weighted) target instead of the standardised
+one, so the fit focuses on high-volatility, high-dollar-impact names. It beat v2 on **every** offline test
+(frozen 389.4 vs 355.7, dense holdout 484.2 vs 460.8, eval 495.3 vs 480.65).
+
+Then it scored **503.38 live — worse than v2's 526.61.** So we reverted to v2 and deleted the v3 files. The
+lesson, which now governs the whole project: our offline validation is drawn from the same 500 days we hold, so
+it is a *proxy* for out-of-sample, not the real thing. A ~5-10% offline improvement is not enough to ship over a
+strategy with a proven live score. The dead-end verdicts (dollar-ridge, pairs, sector-neutralisation, dual
+reversal) are recorded in the "Things that FAILED" table in `CLAUDE.md`; the engines themselves were removed in
+the cleanup.
+
 ## Layout
 
 ```
 strategies/
-  v0_naive_momentum.py             the starter (recovered from git 937a1ac)
+  v0_naive_momentum.py             the starter (recovered from git 937a1ac); eval 0.10
   v1_leadlag_invvol.py             scored 469.12 live
-  v2_leadlag_reversal_bangbang.py  current; mirrored into test_round/
+  v2_leadlag_reversal_bangbang.py  scored 526.61 live  <- LIVE (best); mirrored into test_round/
   engines/
-    v1_engine.py    configurable LeadLag: beta_shrink, sector_k, rank, est_window, scale_mode
-    v2_engine.py    configurable Engine:  exact_cap, band, rev_w, util, lag2_w, algo_lead, shrink
+    leadlag_invvol_engine.py             v1 research engine (beta_shrink, sector_k, rank, est_window, scale_mode)
+    leadlag_reversal_bangbang_engine.py  v2 research engine (exact_cap, band, rev_w, util, lag2_w, algo_lead)
 ```
 
-The **engines** are research tools, not submissions. They expose every knob we tested — including the ones
-that failed — so a future session can re-verify a dead end rather than rediscover it. The failure table lives
-in `CLAUDE.md`.
+The **engines** are research tools, not submissions. Only the v1 and v2 engines are kept (they map to live
+strategies). The v3-round experiments (dollar-ridge, pairs, sector-neutralisation, dual-reversal) were tried,
+failed, and deleted in a cleanup; their verdicts are preserved in the "Things that FAILED" table in `CLAUDE.md`
+so they are not rebuilt from scratch.
 
 ## Keeping the live submission in sync
 
-`test_round/too_much_alpha.py` must stay byte-identical to the newest strategy here. Check it:
+`test_round/too_much_alpha.py` must stay byte-identical to the live strategy here. Check it:
 
 ```bash
 diff strategies/v2_leadlag_reversal_bangbang.py test_round/too_much_alpha.py && echo "in sync"
@@ -69,6 +84,8 @@ diff strategies/v2_leadlag_reversal_bangbang.py test_round/too_much_alpha.py && 
 
 ## Starting a new round
 
-Copy the newest strategy into the new round folder as `too_much_alpha.py`, score it **once** on the new data
-before touching anything, and record that number. It is the honest out-of-sample test the whole project has
-been building toward. Only then start iterating, and add the result as a new `v3_*.py` here.
+Copy the LIVE strategy (`v2_leadlag_reversal_bangbang.py`) into the new round folder as `too_much_alpha.py`,
+score it **once** on the new data before touching anything, and record that number. It is the honest
+out-of-sample test the whole project has been building toward. Only then iterate, and add the result as a new
+`v3_*.py` here — **and only promote it over v2 if a live/data-drop result confirms it, given what happened with
+the first v3.**
