@@ -200,9 +200,19 @@ daily edge over many days produces a usable annual Sharpe, and where the `sqrt(2
 - **Average pairwise correlation 0.200** before hedging, **-0.010** after. Removing ONE factor destroyed
   nearly all co-movement. The slight negative is mechanical, not a bug: the hedge approximately demeans each
   day cross-sectionally, and exactly-demeaned data has average pairwise correlation `-1/(N-1) = -0.0204`.
-  ⇒ **After the hedge, the 50 bets are near-independent**, so the residual covariance is ~diagonal and the
-  mean-variance optimal weight collapses to `dollars ~ prediction / sigma`. **Inverse-vol sizing is optimal
-  here, not a heuristic.**
+  ⇒ After the hedge the 50 bets are **uncorrelated ON AVERAGE**, so the mean-variance optimal weight
+  collapses to `dollars ~ prediction / sigma`. (That is why v1's inverse-vol sizing was principled. It is
+  moot under v2's bang-bang, which optimises a different objective and ignores sigma entirely.)
+- **CORRECTION — this file used to infer from the above that "the residual covariance is ~diagonal". That
+  inference is FALSE, and it matters.** *Average* pairwise correlation ≈ 0 does **not** imply the correlation
+  matrix ≈ I: two sector factors with mixed-sign loadings produce positive correlation within sectors and
+  negative across, averaging to ~0. Measured on the residuals: average pairwise corr **-0.009** but average
+  **|corr| 0.069**, and the residual correlation matrix has **eigenvalues 4.03 and 2.75 above its own
+  Marchenko-Pastur ceiling of 1.73**. Two real factors survive the market hedge.
+  ⇒ Consequence: `sig = L' z` is a **marginal (univariate-screen) estimator, not the regression**. The
+  VAR(1) coefficient is `A = L' C0^-1`, so v2 is strictly mis-specified. **We built and tested the
+  correction; it does not reliably pay — see "GLS whitening" in the FAILED table.** The reasoning error was
+  real; the resulting strategy error is not worth fixing.
 - **Stability audit (split-half correlation of per-instrument parameters, across instruments):**
   - volatility ≈ **0.982** (trust it — use for inverse-vol sizing)
   - market beta ≈ **0.780** (persistent, but noisier because beta is a *ratio* of two estimates)
@@ -313,10 +323,36 @@ predicting `r_ALGO[t+1]` from today's 50 residuals scores an out-of-sample corre
 | Multi-horizon lead-lag `L_k`, k=2..8 | maybe the signal persists multi-day (the hysteresis-gain hypothesis) | **The lead-lag signal is lag-1 ONLY.** OOS IC: k=1 → 0.044 (t 4.9), k≥2 all inside the noise band (t<2). Holding longer dilutes: cumulative-k-day IC decays 0.040→0.017. So hysteresis does NOT work via horizon persistence, and a multi-day predictor is dead. |
 | Sector-neutralise residuals before lead-lag | raises the predictor's OOS IC (0.039→0.047, t 5.6) | **IC up, SCORE DOWN (445→272).** The single most important negative result of the v2→v3 round: under bang-bang, dollar profit is sign-accuracy weighted by realised move size, NOT cross-sectional IC. **Never optimise IC once the Sharpe tax is saturated.** |
 | Second (long) reversal horizon, 20d + 60d | reversal 60d has higher OOS IC (0.030) than 20d (0.025) | **OVERFIT.** Selection mean 486.6 (vs v2 445.3), worst window 342 — but HOLDOUT 369.9 (vs v2 463.6) and eval 454 (vs 480.65). A selection-set artefact. The selection surface was bumpy (spike at lb2=80), not a plateau — the warning sign. the deleted engines documented these; verdicts kept in this table. |
+| **Bagged hard threshold on `L`** | the 1-s.e. keep/drop is a discontinuous, high-variance decision (matrix stability is only 0.110); bootstrap the (z[t],z[t+1]) pairs and average the thresholded estimates to smooth it | **Hurts.** B=20 → 414.9, B=50 → 374.6, vs 443.5. |
+| **Stability selection on `L`** | keep `L[i,j]` weighted by the fraction of bootstraps in which it clears the bar with the same sign (Meinshausen-Bühlmann) | **Hurts.** B=20 → 388.4, B=50 → 391.5, vs 443.5. |
+| **GLS / whitened predictor** (`strategies/engines/gls_whiten_engine.py`) | `sig = L'z` is a MARGINAL estimator; the VAR(1) regression is `A = L' C0^-1`, and `C0` is provably **not** diagonal (2 sector eigenvalues above MP). So whiten today's cross-section: `C0_a = (1-a)C0 + aI`, `a=1` is v2. | **SHELVED — real but too weak to ship.** Paired over days 125-499: best `a`≈0.85 gives d_mu **+44/day (t = 1.39)** and d_hit **+0.003 (t = 1.71)** — right sign, smooth plateau over a ∈ [0.75,0.9] in two independent sub-samples, but **not significant**. Holdout 476.2 vs v2 463.6 (+2.7%); eval 485.6 vs 480.65. **A rank-2 correction — which targets exactly the two real factors and should therefore be CLEANER — is WEAKER and bumpy (all t < 1.6).** That kills the mechanism story. Gain is far below the bar set by the v3 disaster (v3 had ~+9% frozen and still lost live). **Do not ship without new-data confirmation.** |
+| Antisymmetric decomposition of `L` | true "i leads j" flow should live in the antisymmetric part; splitting might denoise | **Hurts.** Symmetric part alone → 29.6, antisymmetric alone → 259.8, full `L` → 443.5. (`antisym=0.5` reproduces v2 exactly — it is algebraically `0.5·L`, a no-op under bang-bang. Good sanity check.) **Useful structural confirmation though: A >> S proves the lead-lag is genuinely DIRECTIONAL, not a contemporaneous-correlation artefact.** |
+| Median-demean (exact 25/25 long/short) | dollar-neutrality is a constraint; the LP optimum under it is a top-25/bottom-25 split | **Hurts badly.** 358.0 vs 443.5. The unbalanced long/short tilt is genuinely informative, and ALGO already absorbs it — the neutrality constraint just throws information away. |
+| `sd_scale`: scale the prediction by `sd_j` | predict the DOLLAR move rather than the z-move (v3's dollar-weighting insight, moved to the PREDICTION stage where it is a much smaller change) | **Hurts.** 387.7 vs 443.5. v3's dollar-weighting is now dead from both directions — estimation stage (lost live) and prediction stage (loses offline). |
+| Alternative hysteresis fallbacks | if "carry yesterday's sign" is what pays, maybe a better fallback exists for weak names | **Nothing beats plain carry (443.5).** reversal-sign → 368.9; sign of k-day mean signal → best 437.9 (k=10), bumpy; sign of EWMA → best 413.2. Unbounded memory of the last conviction is the right rule. |
 
 Parameter sensitivities that DO matter: `signif_se` (1.0 is a sharp-ish hump, but it is the canonical
 one-standard-error cut and survived three different evaluation grids), `band` (broad hump 0.20-0.30),
 `rev_w` (plateau 0.25-0.30, and 0.257 is the theory value), and `beta_shrink` (monotone to 1.0).
+Re-verified: `rev_lb` is a **flat, noisy surface** (selection would pick 15, holdout picks 20 — no signal
+there); `rev_w` has a clean plateau 0.25-0.35 in **both** the selection and holdout regions, and dropping
+the sleeve entirely costs holdout hit rate 0.5223 → 0.5192. Both live values are correct; no free gain.
+
+### THE UNIFYING PRINCIPLE: breadth beats denoising. Never reweight `L` by reliability.
+
+Six separate attempts to "clean up" the lead-lag matrix have now failed — SVD rank truncation, soft /
+James-Stein shrinkage, keeping only 2.5-s.e. pairs, sector neutralisation, **bagging**, and **stability
+selection**. They fail for one reason, and it is worth internalising:
+
+`sig_j = sum_i L[i,j] * z_i` is a sum of **50 terms**. Noise in the individual `L[i,j]` is therefore
+*already averaged down by breadth* before it ever reaches the position. Any scheme that reweights entries
+by how large or how reliable they looked **in-sample** re-introduces selection bias, and that bias does not
+average away. The unbiased-but-noisy estimator beats the "denoised" one.
+
+So the 1-s.e. hard threshold is **not** doing denoising. It is doing something narrower and cheaper:
+deleting entries whose *sign* is a coin flip, which contribute variance with no mean. Keep every surviving
+entry at its **full, unshrunk magnitude**. This principle now predicts the outcome of the whole FAILED
+table above — treat any new "let's regularise `L`" idea as dead on arrival unless it clears this argument.
 
 ## Repo layout (one folder per round; shared core at the root)
 
@@ -334,6 +370,9 @@ sig-algothon-2026/
     engines/
       leadlag_invvol_engine.py              v1 research engine (beta_shrink, sector_k, rank, est_window, scale_mode)
       leadlag_reversal_bangbang_engine.py   v2 research engine (exact_cap, band, rev_w, util, lag2_w, algo_lead)
+      gls_whiten_engine.py                  SHELVED candidate: v2 + GLS whitening of the predictor (whiten=a;
+                                            a=1.0 reproduces v2 exactly). Real theory, +2.7% holdout, t=1.4.
+                                            Below the ship bar — re-test on the Jul 16 data before trusting.
     (v3 dollar-ridge, pairs, sector-neut and dual-reversal engines were tried and DELETED;
      their verdicts live in the "Things that FAILED" table so they aren't rebuilt.)
   test_round/            days 1-500 (released Jul 8)
@@ -418,21 +457,50 @@ position smoothing), `walk_forward` calls it before each window.
 **The judgement it encodes:** never trust a single score. Read `score_min` and `pct_positive`, not just
 `score_mean`. A strategy with a great mean and one catastrophic window is not a strategy.
 
+## ANSWERED questions (were 1-3 on this list; kept because the answers are load-bearing)
+
+**1. WHY hysteresis pays — SOLVED. It is a GATE, not a smoother.**
+Instrumented the eval window, splitting every (day, name) slot by whether the band fired:
+
+| on the 19% of slots where hysteresis fires | hit rate | mu/day |
+|---|---|---|
+| if we had used today's FRESH sign | **50.5%** (a coin flip) | **$5.7** |
+| using the HELD (carried) sign | **52.4%** | **$95.5** |
+
+Fresh and held disagree ~50% of the time on those slots, and **100% of hysteresis's +$90/day comes from
+them** (non-overridden slots are untouched at $429.6). So: *when today's evidence on a name is weak, today's
+sign is worthless — but the last **confident** opinion we held about that name still hits at 52.4%, as well
+as a fresh strong signal does.* Hysteresis refuses to take a coin-flip bet.
+- This is why **signal-EWMA HURTS while hysteresis helps**: EWMA smears *every* name and dilutes the strong
+  signals; hysteresis touches *only* the weak ones. **The value is in the gating, not the smoothing.**
+- It is **not** horizon persistence — consistent with `L_k` (k≥2) being pure noise.
+- The persistence comes from the **reversal sleeve**: hysteresis is worth **+79** with `rev_w=0.25` but only
+  **+36** with `rev_w=0` (interaction table: (0,0)→277.6, (0,0.30)→313.8, (0.25,0)→364.5, (0.25,0.30)→443.5).
+
+**2. Is the band a crude proxy for a holding-period model? — NO. Carry is optimal.**
+Tested explicit fallbacks for the weak names: reversal-sign → 368.9, sign-of-k-day-mean → best 437.9,
+sign-of-EWMA → best 413.2, **plain carry → 443.5**. Unbounded memory of the last conviction wins. There is
+no better holding-period model hiding here; stop looking for one.
+
+**3. Are we over-hedging? — NO. Keep `hedge = 1.0`.**
+`hedge_w` sweep (selection mean / worst): 0.00 → 445.6 / **199.0**; 0.50 → 445.0 / 221.5;
+**1.00 → 443.5 / 242.8**. Dropping the hedge gains +0.5% of mean (noise) and costs 18% of the worst window.
+Under the pre-registered rule (within 2% of best mean → take best worst-window), full hedging wins outright.
+The hedge is nearly free in mean and buys real tail protection.
+
 ## Open questions / next steps (in order of expected value)
 
-1. **Understand WHY hysteresis pays so much.** It raised eval-window mu from $397 to $500 — far more than the
-   $10/day of commission it saves. Hypothesis: the combined signal has multi-day persistence (probably via the
-   20-day reversal sleeve), so a sticky position captures more of it than a daily re-optimised one. If true,
-   the right model is an explicit multi-day-horizon prediction, not a band. **Test:** fit
-   `L_k[i,j] = corr(z_i[t], z_j[t+k])` for k = 1..5 and look at the decay.
-2. **The band is a crude proxy for a holding-period model.** A proper approach: predict the k-day-ahead
-   cumulative residual return and hold accordingly, or solve a small transaction-cost-aware optimisation
-   (trade toward the target only when the expected gain exceeds the commission).
-3. **We may be over-hedging.** With bang-bang, ALGO's hedge reaches $99.6k. Hedging reduces sigma, but sigma
-   is nearly free (frac saturated). Test `hedge=False` and partial hedges: the score may not care, and the
-   commission saved is real.
-4. **Jul 16 drop:** score v2 once, without re-tuning, and record it before touching anything.
-5. **Selection worst-window regressed** (v1 250.3 → v2 242.8) even as the mean and the holdout improved.
+1. **Jul 16 drop:** score v2 once, without re-tuning, and record it before touching anything. This is the
+   single highest-value action available and it is not a research task.
+2. **Re-test the shelved GLS whitening candidate on the new data** (`strategies/engines/gls_whiten_engine.py`,
+   `whiten=0.85`). It is the only surviving candidate with a correct theory behind it: +2.7% holdout,
+   d_hit t=1.71, smooth plateau — but below the ship bar. A new 250-day sample is an independent test. If it
+   confirms, that is real evidence; if not, delete it.
+3. **The hit-rate ceiling is still the whole game.** We convert 52.1% sign accuracy into $543/day against a
+   perfect-foresight ceiling of $9,683. The leader needs only ~53.2%. Every lever inside the current model
+   class is now measured and on a plateau — **a further gain must come from a genuinely new signal, not from
+   tuning.** Do not spend more time regularising `L` (see "the unifying principle").
+4. **Selection worst-window regressed** (v1 250.3 → v2 242.8) even as the mean and the holdout improved.
    Worth understanding rather than ignoring.
 
 ## Past years (context)
