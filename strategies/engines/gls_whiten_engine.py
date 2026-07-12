@@ -1,5 +1,13 @@
 """Engine6 = v2 + GLS whitening of the PREDICTOR.
 
+VERDICT (tested): SHELF, do not ship. Walk-forward selection/holdout peak at a=0.92
+(eval 500.6 vs v2 480.65), but the FROZEN test (fit C0 on days 1-250, trade 251-500
+blind — the best proxy for the live drop) gives a=0.9 -> 345.5 vs v2's 355.7. C0^-1
+amplifies the noisiest eigen-directions, so a stale frozen C0 hurts. Sound theory,
+real offline gain, rejected by the one test that mimics live. Kept as a documented
+candidate to RE-TEST on the Jul 16 data, not to ship on offline numbers.
+
+
 v2 computes sig = L' z, where L[i,j] = corr(z_i[t], z_j[t+1]). That is a MARGINAL
 (univariate-screen) estimator. The VAR(1) regression coefficient is
 

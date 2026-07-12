@@ -104,17 +104,35 @@ What v3 changed (recorded so the idea isn't rebuilt from scratch): a ridge predi
 the estimator chase dollar profit rather than IC. Good theory, better offline, worse live. The dollar-weighting
 insight is still probably correct in principle; the specific parameterisation did not generalise.
 
+### Canonical literature applied (systematic pass), and verdicts
+- **Avellaneda-Lee (2010) OU s-score stat-arb:** fit AR(1)/OU to each instrument's trailing cumulative residual,
+  trade the normalised s-score instead of a raw sum. Applied: eval 344-418 vs v2's raw-sum reversal 480. **Worse.**
+  The residual cumulative is near-random-walk (AR(1)≈1), so the OU normalisation adds estimation noise. The simple
+  20-day sum already captures the same reversion.
+- **Gatev pairs / cointegration** → dead (see pairs entries). **Jegadeesh-Titman / Moskowitz momentum** → dead
+  (drift stability -0.03). **Lo-MacKinlay / Lehmann / Khandani-Lo contrarian** → this IS our reversal sleeve.
+  **Lead-lag (2024 winner)** → our primary signal. **PCA/factor residuals (Avellaneda-Lee)** → we hedge the market
+  factor. So the classical stat-arb / momentum / mean-reversion literature is now systematically covered; nothing
+  outside v2 survives the frozen test.
+
 ### Directions tried while chasing the leader (810), and their verdicts
 - price-level mean reversion: **dead** (AR(1) 0.977 ≈ random walk, speed stability 0.083, IC ~0.018 t<2).
 - factor-level lead-lag (do the 3 PCs lead each other): **weak** (OOS IC 0.013). Lead-lag is idiosyncratic.
 - ridge / dollar-weighted ridge (v3): better offline, **worse live**. Reverted (see above).
 - sector-neutralise then lead-lag: IC 0.047 but SCORE 445→272. **dead** (IC-vs-score gap).
 - dual reversal horizon (20+60): great on selection, **overfit** on holdout. **dead**.
-- **pairs trading / cointegration:** in-sample cointegration is real (27/30 shortest-half-life pairs cointegrate
-  at 5%, half-lives 3-5d) but only ~46% stable OOS (half-life corr across halves 0.245). Scored: pairs-only eval
-  93-242 vs 495 (selection worst-window went negative); blending in strictly HURTS. **Dead.** The cross-sectional
-  reversal sleeve is already the robust version of the same mean-reversion — reverting against the whole basket
-  beats trading fragile individual partners.
+- **pairs trading / cointegration (tested TWICE, both dead):** in-sample cointegration is real (27/30
+  shortest-half-life pairs cointegrate at 5%, half-lives 3-5d) but only ~46% stable OOS (half-life corr 0.245).
+  (a) stat-arb signal across all 50: eval 93-242, blending into the main strategy HURTS. (b) FOCUSED top-k pairs
+  (trade only the best few): eval 5-87 vs v2's 480, and crucially Sharpe stayed LOW (0.6-1.8), so it's not even a
+  high-Sharpe/low-mu case — the selected spreads don't reliably revert OOS. Two compounding failures: little
+  capital deployed (score ≈ mu, so idle book = low score) AND an unstable signal. The cross-sectional reversal
+  sleeve already captures the ROBUST version (revert against the whole basket, using all 50 names). Do not retry.
+- **formulaic-alpha factor zoo (Alpha101 / QuantGPT operator vocabulary, price-only subset):** systematic sweep of
+  rank/delta/ts_rank/decay_linear/ts_std/cross-corr factors. Only lead-lag (OOS IC 0.039) and reversal (0.025-0.030)
+  survive — both already in v2. decay-weighting is WORSE than a flat sum; rank transforms collapse to ~0 (Gaussian
+  data, so ranks lose the info z-scores keep). **No third factor exists.** No external alpha tool can extract signal
+  that isn't in the data; the score ceiling is set by the generator, not our tooling.
 
 ## THE LEADERBOARD LESSON (read before optimising anything)
 
@@ -327,6 +345,7 @@ predicting `r_ALGO[t+1]` from today's 50 residuals scores an out-of-sample corre
 | **Stability selection on `L`** | keep `L[i,j]` weighted by the fraction of bootstraps in which it clears the bar with the same sign (Meinshausen-Bühlmann) | **Hurts.** B=20 → 388.4, B=50 → 391.5, vs 443.5. |
 | **GLS / whitened predictor** (`strategies/engines/gls_whiten_engine.py`) | `sig = L'z` is a MARGINAL estimator; the VAR(1) regression is `A = L' C0^-1`, and `C0` is provably **not** diagonal (2 sector eigenvalues above MP). So whiten today's cross-section: `C0_a = (1-a)C0 + aI`, `a=1` is v2. | **SHELVED — real but too weak to ship.** Paired over days 125-499: best `a`≈0.85 gives d_mu **+44/day (t = 1.39)** and d_hit **+0.003 (t = 1.71)** — right sign, smooth plateau over a ∈ [0.75,0.9] in two independent sub-samples, but **not significant**. Holdout 476.2 vs v2 463.6 (+2.7%); eval 485.6 vs 480.65. **A rank-2 correction — which targets exactly the two real factors and should therefore be CLEANER — is WEAKER and bumpy (all t < 1.6).** That kills the mechanism story. Gain is far below the bar set by the v3 disaster (v3 had ~+9% frozen and still lost live). **Do not ship without new-data confirmation.** |
 | Antisymmetric decomposition of `L` | true "i leads j" flow should live in the antisymmetric part; splitting might denoise | **Hurts.** Symmetric part alone → 29.6, antisymmetric alone → 259.8, full `L` → 443.5. (`antisym=0.5` reproduces v2 exactly — it is algebraically `0.5·L`, a no-op under bang-bang. Good sanity check.) **Useful structural confirmation though: A >> S proves the lead-lag is genuinely DIRECTIONAL, not a contemporaneous-correlation artefact.** |
+| **GLS whitening of the predictor** (`strategies/engines/gls_whiten_engine.py`, `Engine6`) | `sig=L'z` is a MARGINAL estimator; the true VAR(1) coefficient is `A=L'C0^-1`, and the residual `C0` still has 2 sector factors (eigenvalues 4.03, 2.75 > MP 1.73), so `C0≠I`. Whiten today's cross-section: `Ca=(1-a)C0+aI`, `a=1`=v2. | **Walk-forward gain, FROZEN loss — do NOT ship.** Selection/holdout peak at a≈0.92 (eval 500.6 vs 480.65, better holdout). But the FROZEN test (fit C0 on 1-250, trade 251-500 blind — the best live proxy) gives a=0.9 → **345.5 vs v2's 355.7**. `C0^-1` amplifies the noisiest small-eigenvalue directions, so a stale frozen `C0` hurts. Sound theory, real offline gain, rejected by the one test that mimics live. The v3 trap again. |
 | Median-demean (exact 25/25 long/short) | dollar-neutrality is a constraint; the LP optimum under it is a top-25/bottom-25 split | **Hurts badly.** 358.0 vs 443.5. The unbalanced long/short tilt is genuinely informative, and ALGO already absorbs it — the neutrality constraint just throws information away. |
 | `sd_scale`: scale the prediction by `sd_j` | predict the DOLLAR move rather than the z-move (v3's dollar-weighting insight, moved to the PREDICTION stage where it is a much smaller change) | **Hurts.** 387.7 vs 443.5. v3's dollar-weighting is now dead from both directions — estimation stage (lost live) and prediction stage (loses offline). |
 | Alternative hysteresis fallbacks | if "carry yesterday's sign" is what pays, maybe a better fallback exists for weak names | **Nothing beats plain carry (443.5).** reversal-sign → 368.9; sign of k-day mean signal → best 437.9 (k=10), bumpy; sign of EWMA → best 413.2. Unbounded memory of the last conviction is the right rule. |
