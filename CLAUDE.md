@@ -139,11 +139,53 @@ A `rev_w` sweep across selection/holdout/fresh/both-eval-windows is **uniformly 
 reweight of a validated sleeve, not a structural change like v3) and principled (reversal IC genuinely
 decayed).**
 
-**STAGED SUBMISSION = v4** (`strategies/v4_leadlag_reversal_rev015.py`, byte-identical to v2 except
-`REV_W 0.25 → 0.15`; copied to `general_round/too_much_alpha.py`). eval[501-750] **554.16** (mu 568.5, SR
-6.21) vs v2's 526.61; eval[251-500] 489.92. **v4 is prepared locally but NOT yet uploaded** — the live
-leaderboard still reflects v2 until the user submits. When the live 751-1000 score comes back, record it here
-and resolve H1 vs H2 (near ~570 ⇒ H1/behind; near ~1000 ⇒ H2/richer window).
+**LIVE SUBMISSION = v4** (`strategies/v4_leadlag_reversal_rev015.py`, byte-identical to v2 except
+`REV_W 0.25 → 0.15`; copied to `general_round/too_much_alpha.py`). eval[501-750] 554.16 (mu 568.5, SR 6.21);
+eval[251-500] 489.92.
+
+**LIVE GENERAL-ROUND SCORE (751-1000), submission SUB-BFF1CA1C: 841.13** (mu 851.76, sigma 1514.31, 4792
+trades). **This resolves H1 vs H2 — BOTH are partly true:**
+- **H2 confirmed (window is richer).** The *same* v4 strategy scored 554 on 501-750 but **841 on 751-1000**,
+  at essentially the *same* dollar-vol (1448 → 1514). Same book size, +50% mu ⇒ 751-1000 is a genuinely
+  more *predictable* stretch (higher IC, not higher vol). So the generator is **NOT perfectly
+  constant-parameter in predictability** across the 1000 days — 751-1000 is a high-signal regime. Our
+  1-750 backtests therefore *understate* achievable live score.
+- **H1 also real (field is ahead).** Leader 1274 on the same 751-1000 window ⇒ they capture ~16% of the
+  ~8000/day ceiling vs our ~10.6% (841/8000). Gap is now **~1.5×, not 2.4×.** We are at **~66% of the
+  leader**, materially better than the 41% the raw 526-vs-1282 comparison implied.
+- **Consequence for research:** a more-predictable window means more extractable signal, and it is exactly
+  the regime where a better estimator (or a data-hungry one like RRR/PLS) could pay where it didn't on the
+  quieter 501-750. But live submissions are the only window into 751-1000, so validate on ALL of 1-750
+  robustly first, then spend a submission. The live 841 is the anchor to beat.
+
+**Post-841 research (this session) — what moved the score and what didn't:**
+- **STAGED = v5** (`strategies/v5_leadlag_multirev.py`): v2 with a **multi-horizon reversal sleeve [20,60]**
+  at weight 0.25 (only change vs v2). eval[251-500] 518.11, eval[501-750] **606.21** (+9.4% vs v4's 554).
+  Rationale that makes it robust, not overfit: the residual own-reversal IC **strengthens at longer
+  lookbacks and is split-half stable** (lb20 0.014, lb60 0.017, lb100 0.022, each stable across halves —
+  independent, non-score evidence), and the [20,60] blend **strictly dominates v2 and v4 on BOTH the old
+  (125-500) and new (500-750) eras** and both eval windows (unlike v3, which was better on one dataset).
+  v4's cut to rev_w=0.15 was an overcorrection to a 501-750-window artifact; with the stronger multi-horizon
+  sleeve the IC-optimal weight returns to v2's original 0.25. **Recommend submitting v5** (live-feedback
+  safety: v4=841 is the anchor; if v5 underperforms we will see it). Expected live ~900-920 if the
+  ev501/live ratio holds — still far short of the leader (1274); v5 is an increment, not the gap-closer.
+- **No estimator beats the marginal screen on SCORE — confirmed across 43 windows spanning all 1-750**
+  (fixed hyperparams, not per-window cherry-picked): marginal mean 496.9/worst 233.7; ridge-VAR 464/201;
+  RRR-15 425/115; RRR-20 449/135; PLS-12 483/253; marginal+RRR ensemble 488/200. The marginal lead-lag
+  screen is the robust score-optimum, full stop. **This buries the RRR/PLS lead** from the pre-841 note:
+  they raise OOS z-IC and are data-hungrier, but they LOSE on dollar-score even on the full data — the
+  IC-vs-score gap, now confirmed on 43 windows, not one. Do not revisit multivariate estimators unless a
+  future round provides a *fundamentally* different regularization; ridge/RRR/PLS are all dead on score.
+- **Orthogonal-signal hunt (blend-and-score across all 1-750): only reversal helps.** Tested rev{5..60},
+  momentum-20, 1-day acceleration, cross-sectional rank-reversal, short/long vol-ratio. Momentum, accel,
+  vol-ratio all HURT (confirms no vol clustering, no own-momentum). Reversal helps, and *longer* horizons
+  help more on recent data (rev60 NEW-era 617 vs rev20 571) — the basis for v5's [20,60].
+- **Still-open gap to the leader (~1.5×).** We could not find the signal that lifts capture from ~0.11 to
+  ~0.16 on 751-1000. Lag-1 linear is exhausted (marginal screen optimal, data Gaussian/lag-1-only). The
+  leader's edge is most likely a signal OUTSIDE the lead-lag+reversal family — but every classical stat-arb
+  family is now tested and dead. Highest-value next probes if pushing further: market/regime-conditional
+  lead-lag (does the sign structure change with market state?), and re-testing v5's own reversal horizon
+  once the finalist data lands. Otherwise the increments are on a plateau.
 
 **Bottom line for the general round.** We likely fell behind (H1 more probable than H2). No lag-1 linear
 estimator we can build closes the 0.076→0.16 IC gap on SCORE — the multivariate VAR structure (in-sample

@@ -11,7 +11,8 @@ that module by name, so it must live in the round folder).
 | v1 | `v1_leadlag_invvol.py` | 345.57 | 469.12 | Aggregated lead-lag on beta-hedged residuals, inverse-vol sized, ALGO hedge. |
 | v2 | `v2_leadlag_reversal_bangbang.py` | 480.65 | 526.61 | Hysteresis band, bang-bang sizing at the exact cap, orthogonal reversal sleeve. Test-round best. |
 | v3 | *(deleted)* | 495.26 | **503.38 — worse** | Dollar-weighted ridge. Beat v2 on every offline test, **lost live**. Reverted and removed. |
-| **v4** | **`v4_leadlag_reversal_rev015.py`** | **489.92** | *staged (general round)* | **STAGED for general round.** v2 with reversal weight 0.25 → 0.15 (the only change). On the 750-day data the reversal sleeve decayed to ~0 OOS IC; downweighting it is uniformly better across all splits. eval[501-750] **554.16** vs v2's 526.61. |
+| v4 | `v4_leadlag_reversal_rev015.py` | 489.92 | **841.13 (751-1000)** | v2 with reversal weight 0.25 → 0.15. First general-round submission (SUB-BFF1CA1C). Live 841.13 revealed the 751-1000 window is *more predictable* than 501-750 (same strategy: 554 → 841). |
+| **v5** | **`v5_leadlag_multirev.py`** | **518.11** | *staged (general round)* | **STAGED.** v2 with a multi-horizon reversal sleeve [20,60] at weight 0.25 (the only change). Residual own-reversal IC strengthens at longer lookbacks; the short+long blend **strictly dominates v2 and v4** on both the old (125-500) and new (500-750) eras. eval[501-750] **606.21** vs v4's 554.16 (+9.4%). |
 
 ## The progression, and why each step happened
 
