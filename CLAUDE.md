@@ -67,6 +67,91 @@ Honest out-of-sample evidence for v2 (see "Validation protocol"):
   sleeve:** -32.8. Both *lose money* ⇒ no look-ahead leak, and the lead-lag matrix (not reversal) is what
   carries the strategy.
 
+## GENERAL ROUND (Jul 16 data drop, days 1-750) — the honest OOS test, and a strategic reframe
+
+The Jul 16 drop appended **days 501-750** (the exact window we were scored on live). Days 1-500 are
+byte-identical to the test-round file (verified, max abs diff 0.0). `eval.py`/rules **unchanged** (only the
+import name differs). Now scored on hidden **751-1000**. Repo: `general_round/` mirrors `test_round/`.
+
+**v2 reproduces live to the cent.** `cd general_round && python eval.py` (v2, unmodified, days 501-750):
+**Score 526.61, mu 542.6, sigma 1492.85, Sharpe 5.75** — byte-for-byte our test-round LIVE number. So the
+backtester = live reality, and 501-750 is now a real, fresh, never-tuned-on validation block.
+
+**THE STRATEGIC FACT: the field roughly DOUBLED between rounds; v2 stood still.** Test-round leader 810 →
+general-round leader 1274. Ivan&Haowen (test leader, 810) → 1187. The whole board is clustered mu ~1160-1282.
+v2's mu is **flat ~540** on every rolling 250-day window through 1-750 (251-500: 500, 351-600: 551, 451-700:
+592, 501-750: 543) — **no upward trend**. So on 751-1000 v2 will likely score ~540-600, i.e. **near the
+bottom** of the current board unless the hidden window is special.
+
+**Why the field jumped — the load-bearing new insight: the lead-lag screen is strongly DATA-HUNGRY.**
+Marginal-screen OOS IC on the fresh 501-750 block, vs fit-window length: 99d → 0.037, 249d → 0.052, 399d →
+0.073, 499d → **0.076** (in-sample ceiling at 750d is 0.25). In the test round everyone fit on ~250 days (IC
+~0.052 ⇒ mu ~500); in the general round everyone fits on ~750 days (higher IC ⇒ higher mu). Much of the
+field-wide doubling is **everyone getting 3× the training data and converging near the same data-limited
+ceiling** (fits the tight clustering). v2 uses an expanding window, so it captures this **for free** — its
+751-1000 fit (750-999 days) is richer than any window we can test locally.
+
+**The scoring theorem that makes IC the objective.** For this Gaussian generator under bang-bang,
+`capture = mu / perfect-foresight-ceiling = daily cross-sectional IC` (because `E[move·sign(pred)] =
+ρ·σ·√(2/π)` and perfect foresight is the same with ρ=1). Perfect-foresight ceiling is **flat ~$8,000/day**
+in every block. So we capture 542/8000 = **6.8%** (≈ IC 0.076); the leader captures 1282/8000 = **~16%**
+(≈ IC 0.16). **BUT the theorem is in z-space; SCORE is in dollars, and the two diverge** — see the IC-vs-
+score trap below. Always confirm a signal by ground-truth bang-bang SCORE, never by IC alone.
+
+**Are we behind (H1), or is 751-1000 just richer (H2)?** Evidence for **H1 (field found better signal, we're
+behind):** the generator is provably constant-parameter over 750 days (flat vol ~35%, flat ceiling, flat
+block stats); the board shows the **same dollar-vol (~1500) but 2.4× the mu** ⇒ same book size, better
+predictor, not more leverage. Evidence for **H2 (richer hidden window):** uniform-ish field scaling + tight
+clustering. **Cannot be resolved from our data.** THE fastest resolver is to **submit and read the live
+751-1000 score**: v2 unchanged scored 526 on 501-750, so a live number near ~540 ⇒ H1 (crisis); near ~1000 ⇒
+H2 (fine). This one submission is the highest-value action available.
+
+**Re-examined generator on 750 days — assumptions HOLD.** Gaussian (excess kurtosis -0.033, skew -0.004, in
+noise bands), **no vol clustering** (ACF r² ≈ 0 at all lags), **no nonlinear lead-lag** (|z|→z matrix 0.1%
+significant, below null). Confirmed: linear methods are sufficient; lag-1 is the only structure.
+
+**Lag-1 linear predictability caps at IC ~0.076 OOS.** Full VAR ridge: in-sample IC 0.35 but OOS **0.067**
+(2,500 params, massive overfit) — the marginal screen (0.076) BEATS the full ridge VAR OOS. Lag-2/3/5 are
+noise or negative; cumulative sums hurt; raw-return prediction (0.066) < market-neutral (0.076); multi-lag
+ridge VAR scores a **disaster** (164 vs 556 bang-bang). So a better *version of the same lead-lag* is not
+the answer.
+
+**NEW dead ends (this round), all ground-truth SCORE-tested — the "IC-vs-score trap" strikes again:**
+- **Reduced-rank regression (RRR) & PLS.** These DO raise OOS z-IC above the marginal screen (RRR-12 0.083,
+  PLS-5 0.082 vs 0.076) AND are **data-hungrier** (their IC edge over marginal grows with fit length — the
+  one genuinely interesting lead for the finalist round). **But on ground-truth bang-bang SCORE they LOSE:**
+  RRR/PLS win only on the 501-750 window used to pick their rank (RRR-r8 683) and lose badly on 251-500
+  (448) and on worst-windows; a "marginal-when-thin / PLS-when-thick" hybrid scored 437-516 vs marginal's
+  554 on 501-750 and 379-455 vs 490 on 251-500. Reason: rank reduction keeps the *systematic* lead-lag
+  (high z-IC) and discards the *idiosyncratic* lead-lag that carries the tradeable dollars — identical
+  failure to SVD-truncation / sector-neutralisation. **This is the 4th+ confirmation of "breadth beats
+  denoising / never regularise L", now extended to RRR and PLS.** The marginal screen at full magnitude is
+  the robust SCORE-optimum. (Engines kept for the finalist round: RRR/PLS are the only estimators whose IC
+  edge *grows* with data — worth re-testing when 1000+ days exist, but only against ground-truth score.)
+
+**The one robust, shippable improvement found: reversal weight 0.25 → ~0.15.** The reversal sleeve has
+**decayed to ~0 IC on the newer data** (fit-half/test-half of 750d: reversal OOS IC **-0.005, t -0.6**;
+lead-lag 0.066, t 8.6). The IC-optimal blend weight is now `w_rev = IC_rev/(IC_ll+IC_rev) ≈ 0` (was 0.257).
+A `rev_w` sweep across selection/holdout/fresh/both-eval-windows is **uniformly better at 0.15-0.20 than at
+0.25** (e.g. eval501-750 554 vs 527; eval251-500 490 vs 481; holdout 655 vs 581; fresh WF 571 vs 514).
+`rev_w=0.15` keeps some diversification/tail-protection while upweighting the now-stronger lead-lag; pure LL
+(rev_w=0) is best on 501-750 but has a slightly worse selection worst-window. **This is low-risk (a minor
+reweight of a validated sleeve, not a structural change like v3) and principled (reversal IC genuinely
+decayed).**
+
+**STAGED SUBMISSION = v4** (`strategies/v4_leadlag_reversal_rev015.py`, byte-identical to v2 except
+`REV_W 0.25 → 0.15`; copied to `general_round/too_much_alpha.py`). eval[501-750] **554.16** (mu 568.5, SR
+6.21) vs v2's 526.61; eval[251-500] 489.92. **v4 is prepared locally but NOT yet uploaded** — the live
+leaderboard still reflects v2 until the user submits. When the live 751-1000 score comes back, record it here
+and resolve H1 vs H2 (near ~570 ⇒ H1/behind; near ~1000 ⇒ H2/richer window).
+
+**Bottom line for the general round.** We likely fell behind (H1 more probable than H2). No lag-1 linear
+estimator we can build closes the 0.076→0.16 IC gap on SCORE — the multivariate VAR structure (in-sample
+0.35) is real but not robustly extractable OOS (RRR/PLS raise IC, lose score). If the live submission
+confirms H1, the gap needs a signal **outside the entire classical stat-arb / lead-lag family** (all of
+which are now exhaustively tested and dead) — or it needs the RRR/PLS data-hunger to pay once 1000+ days
+exist. The immediate move is: **submit, read the number, resolve H1 vs H2**, then decide.
+
 ## Leaderboard history (test round, days 501-750 hidden) — LIVE scores
 
 | Our version | live score | mu | sigma | note |

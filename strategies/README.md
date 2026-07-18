@@ -9,8 +9,9 @@ that module by name, so it must live in the round folder).
 |---|---|---|---|---|
 | v0 | `v0_naive_momentum.py` | 0.10 | — | The organisers' starter. Buys yesterday's winners. |
 | v1 | `v1_leadlag_invvol.py` | 345.57 | 469.12 | Aggregated lead-lag on beta-hedged residuals, inverse-vol sized, ALGO hedge. |
-| **v2** | **`v2_leadlag_reversal_bangbang.py`** | 480.65 | **526.61 (best)** | **LIVE.** Hysteresis band, bang-bang sizing at the exact cap, orthogonal reversal sleeve. |
+| v2 | `v2_leadlag_reversal_bangbang.py` | 480.65 | 526.61 | Hysteresis band, bang-bang sizing at the exact cap, orthogonal reversal sleeve. Test-round best. |
 | v3 | *(deleted)* | 495.26 | **503.38 — worse** | Dollar-weighted ridge. Beat v2 on every offline test, **lost live**. Reverted and removed. |
+| **v4** | **`v4_leadlag_reversal_rev015.py`** | **489.92** | *staged (general round)* | **STAGED for general round.** v2 with reversal weight 0.25 → 0.15 (the only change). On the 750-day data the reversal sleeve decayed to ~0 OOS IC; downweighting it is uniformly better across all splits. eval[501-750] **554.16** vs v2's 526.61. |
 
 ## The progression, and why each step happened
 
