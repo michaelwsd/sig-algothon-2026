@@ -12,7 +12,8 @@ that module by name, so it must live in the round folder).
 | v2 | `v2_leadlag_reversal_bangbang.py` | 480.65 | 526.61 | Hysteresis band, bang-bang sizing at the exact cap, orthogonal reversal sleeve. Test-round best. |
 | v3 | *(deleted)* | 495.26 | **503.38 — worse** | Dollar-weighted ridge. Beat v2 on every offline test, **lost live**. Reverted and removed. |
 | v4 | `v4_leadlag_reversal_rev015.py` | 489.92 | **841.13 (751-1000)** | v2 with reversal weight 0.25 → 0.15. First general-round submission (SUB-BFF1CA1C). Live 841.13 revealed the 751-1000 window is *more predictable* than 501-750 (same strategy: 554 → 841). |
-| **v5** | **`v5_leadlag_multirev.py`** | **518.11** | *staged (general round)* | **STAGED.** v2 with a multi-horizon reversal sleeve [20,60] at weight 0.25 (the only change). Residual own-reversal IC strengthens at longer lookbacks; the short+long blend **strictly dominates v2 and v4** on both the old (125-500) and new (500-750) eras. eval[501-750] **606.21** vs v4's 554.16 (+9.4%). |
+| v5 | `v5_leadlag_multirev.py` | 518.11 | **671.85 (751-1000)** | Multi-horizon reversal [20,60] at weight 0.25. Dominated v2/v4 on EVERY offline window (eval[501-750] 606 vs 554) but **LOST live (671.85 vs v4's 841.13)**. Third offline-validated change to lose live. The reversal sleeve is anti-predictive between adjacent windows. |
+| **v6** | **`v6_leadlag_pure.py`** | 457.29 | *staged (general round)* | **STAGED.** v2 with the reversal sleeve REMOVED (rev_w=0) — pure lead-lag. Two live results (v4 rev0.15→841, v5 rev0.25→672) show *less reversal → higher live*; a linearly-blended anti-predictive sleeve is optimised at weight 0. eval[501-750] 556.78 (offline is anti-predictive for reversal, so ignore it). Bet: live > v4's 841. |
 
 ## The progression, and why each step happened
 

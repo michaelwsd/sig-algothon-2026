@@ -139,12 +139,12 @@ A `rev_w` sweep across selection/holdout/fresh/both-eval-windows is **uniformly 
 reweight of a validated sleeve, not a structural change like v3) and principled (reversal IC genuinely
 decayed).**
 
-**LIVE SUBMISSION = v4** (`strategies/v4_leadlag_reversal_rev015.py`, byte-identical to v2 except
-`REV_W 0.25 → 0.15`; copied to `general_round/too_much_alpha.py`). eval[501-750] 554.16 (mu 568.5, SR 6.21);
-eval[251-500] 489.92.
+**BEST LIVE SCORE = v4 = 841.13** (`strategies/v4_leadlag_reversal_rev015.py`, v2 with `REV_W 0.25 → 0.15`).
+Two general-round submissions so far on hidden 751-1000: **v4 (SUB-BFF1CA1C) = 841.13** (mu 851.76, sigma
+1514.31, 4792 trades); **v5 (SUB-FE38EF62) = 671.85** (mu 682.82, sigma 1379.41, 7164 trades) — v5 lost, see
+below. **v6 (pure lead-lag) is now STAGED** in `general_round/too_much_alpha.py` as the corrective bet.
 
-**LIVE GENERAL-ROUND SCORE (751-1000), submission SUB-BFF1CA1C: 841.13** (mu 851.76, sigma 1514.31, 4792
-trades). **This resolves H1 vs H2 — BOTH are partly true:**
+**The v4 score (841.13) resolves H1 vs H2 — BOTH are partly true:**
 - **H2 confirmed (window is richer).** The *same* v4 strategy scored 554 on 501-750 but **841 on 751-1000**,
   at essentially the *same* dollar-vol (1448 → 1514). Same book size, +50% mu ⇒ 751-1000 is a genuinely
   more *predictable* stretch (higher IC, not higher vol). So the generator is **NOT perfectly
@@ -159,16 +159,24 @@ trades). **This resolves H1 vs H2 — BOTH are partly true:**
   robustly first, then spend a submission. The live 841 is the anchor to beat.
 
 **Post-841 research (this session) — what moved the score and what didn't:**
-- **STAGED = v5** (`strategies/v5_leadlag_multirev.py`): v2 with a **multi-horizon reversal sleeve [20,60]**
-  at weight 0.25 (only change vs v2). eval[251-500] 518.11, eval[501-750] **606.21** (+9.4% vs v4's 554).
-  Rationale that makes it robust, not overfit: the residual own-reversal IC **strengthens at longer
-  lookbacks and is split-half stable** (lb20 0.014, lb60 0.017, lb100 0.022, each stable across halves —
-  independent, non-score evidence), and the [20,60] blend **strictly dominates v2 and v4 on BOTH the old
-  (125-500) and new (500-750) eras** and both eval windows (unlike v3, which was better on one dataset).
-  v4's cut to rev_w=0.15 was an overcorrection to a 501-750-window artifact; with the stronger multi-horizon
-  sleeve the IC-optimal weight returns to v2's original 0.25. **Recommend submitting v5** (live-feedback
-  safety: v4=841 is the anchor; if v5 underperforms we will see it). Expected live ~900-920 if the
-  ev501/live ratio holds — still far short of the leader (1274); v5 is an increment, not the gap-closer.
+- **v5 (`strategies/v5_leadlag_multirev.py`) — SUBMITTED, LOST LIVE. The v3 lesson, repeated.** v2 with a
+  multi-horizon reversal sleeve [20,60] at weight 0.25. It **dominated v2 and v4 on EVERY offline window**
+  — eval[251-500] 518.11, eval[501-750] 606.21 (+9.4% vs v4's 554), both eras — with independent IC-spectrum
+  support (own-reversal IC rises with lookback and is split-half stable). **Live (751-1000): 671.85, WORSE
+  than v4's 841.13** (mu 682.8 vs 851.8, but +50% trades: 7164 vs 4792). The reversal-driven flips were
+  wrong on the live window. **THE decisive finding: the reversal sleeve is ANTI-correlated between adjacent
+  windows** — more reversal was BETTER on the 501-750 backtest but WORSE on live 751-1000. So the immediately-
+  adjacent window is *anti-predictive* for reversal, and **offline tuning of any non-lead-lag component does
+  not generalise live** (now proven 3×: v3 ridge, v5 reversal, and every earlier IC-vs-score case). Only the
+  **lead-lag core** generalises backtest→live.
+- **STAGED = v6 (`strategies/v6_leadlag_pure.py`): PURE lead-lag, reversal REMOVED (rev_w=0).** The corrective
+  bet, grounded in LIVE evidence (not offline): the two live points on 751-1000 are rev0.25→672, rev0.15→841,
+  a monotone "less reversal → higher score". For a linearly-blended sleeve that is anti-predictive on the
+  window, score is monotone-decreasing in its weight, so **weight 0 is optimal** there. eval[501-750] 556.78
+  (IGNORE — offline is anti-predictive for this dimension). **Bet: live > 841.** Zero-risk fallback is to
+  revert `general_round/too_much_alpha.py` to v4 (guaranteed 841). **The rule going forward: change ONLY the
+  lead-lag core or sizing on hard evidence; never re-add or re-tune a reversal/secondary sleeve on offline
+  score — it is anti-predictive. Trust live results over any backtest.**
 - **No estimator beats the marginal screen on SCORE — confirmed across 43 windows spanning all 1-750**
   (fixed hyperparams, not per-window cherry-picked): marginal mean 496.9/worst 233.7; ridge-VAR 464/201;
   RRR-15 425/115; RRR-20 449/135; PLS-12 483/253; marginal+RRR ensemble 488/200. The marginal lead-lag
